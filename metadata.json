@@ -1,0 +1,6 @@
+{
+  "name": "Academia IA Lucrativa",
+  "description": "Aprenda métodos comprovados passo a passo para gerar renda na internet utilizando o poder da Inteligência Artificial.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
