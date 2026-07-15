@@ -242,5 +242,87 @@ export const METHODS: Method[] = [
       "Se o WhatsApp comercial da loja não estiver listado no iFood, busque o nome do restaurante no Instagram ou digite o endereço dele no Google Maps para encontrar o telefone fixo ou celular cadastrado.",
       "Se preferir usar fotos reais enviadas pelo próprio cliente, use o Canva ou o Clipdrop (da Stability AI) para remover fundos de cozinha bagunçados e aplicar fundos de estúdio perfeitos com sombra realista em segundos!"
     ]
+  },
+  {
+    id: "criacao-voiceovers-ia",
+    title: "Método 7: Narração e Locução Comercial de Alto Padrão com IA",
+    subtitle: "Gere locuções profissionais ultra-realistas com ElevenLabs e fature com comerciais locais",
+    category: "Freelancer / Agência",
+    difficulty: "Fácil",
+    estimatedIncome: "R$ 1.200 - R$ 3.500 / mês",
+    duration: "15 minutos por áudio",
+    iconName: "Mic",
+    description: "Muitas lojas de comércio, canais de vídeo e agências precisam de vozes impactantes para seus anúncios publicitários no Instagram, rádio, carros de som e vídeos de vendas. Usando o ElevenLabs, você gera locuções que parecem gravadas em estúdios profissionais por locutores renomados, vendendo esses arquivos de áudio sob demanda e com alta margem de lucro.",
+    steps: [
+      {
+        id: "mic-step-1",
+        title: "Passo 1: Escrever um Roteiro Comercial Persuasivo",
+        description: "Peça ao ChatGPT para estruturar o texto do anúncio com forte apelo emocional, gatilhos de urgência e clareza de chamada de ação.",
+        promptText: "Crie um roteiro de locução comercial para um anúncio de rádio/Instagram de 30 segundos para uma Hamburgueria local. O texto deve ser animado, dar água na boca e ter uma chamada irresistível para pedir pelo WhatsApp com frete grátis hoje. Marque os tempos e sugestão de entonação.",
+        actionLink: "https://chatgpt.com",
+        linkText: "Criar Roteiro no ChatGPT"
+      },
+      {
+        id: "mic-step-2",
+        title: "Passo 2: Sintetizar a Locução Profissional no ElevenLabs",
+        description: "Cole o texto no ElevenLabs. Selecione vozes maduras, entusiasmadas ou narrativas que combinem com a marca do cliente. Ajuste a velocidade e estabilidade para garantir o realismo e baixe o áudio em alta definição.",
+        actionLink: "https://elevenlabs.io",
+        linkText: "Gerar Voz no ElevenLabs"
+      },
+      {
+        id: "mic-step-3",
+        title: "Passo 3: Oferecer e Entregar para Comércios Locais",
+        description: "Prospecte lojas da sua cidade no Instagram, envie uma prévia gratuita da voz lendo o nome deles e cobre de R$ 50,00 a R$ 150,00 por áudio de anúncio comercial completo.",
+        promptText: "Olá! Notei os stories de vocês e vi que fazem posts incríveis. Eu sou especialista em locução publicitária por IA e fiz essa amostra grátis de áudio narrando uma oferta da sua loja (veja em anexo). Um áudio impactante desses nos stories de vocês pode aumentar as vendas em até 30%. Eu faço a criação de scripts e locução completa para as ofertas de vocês. Se precisarem de mais locuções profissionais para rádio, stories ou som ambiente da loja, cobro apenas R$ 60 por áudio avulso ou R$ 250 por um pacote mensal de 5 locuções. Que tal testarmos no post de hoje?",
+        actionLink: "https://web.whatsapp.com",
+        linkText: "Falar com Lojas no WhatsApp"
+      }
+    ],
+    tips: [
+      "Use vozes com sotaque neutro para comerciais nacionais, ou experimente clonar a própria voz (se possuir microfone de estúdio) para criar um assistente virtual exclusivo.",
+      "Adicione uma trilha sonora de fundo suave sem direitos autorais usando o CapCut para dar um toque de estúdio de rádio profissional de altíssimo padrão.",
+      "Ofereça pacotes mensais para agências de tráfego pago locais que criam anúncios constantemente e precisam de novas locuções toda semana."
+    ]
+  },
+  {
+    id: "chatbots-ia-atendimento",
+    title: "Método 8: Automação de Atendimento e Vendas com Chatbots de IA",
+    subtitle: "Configure robôs inteligentes no WhatsApp para responder clientes e fature com setup + manutenção",
+    category: "Desenvolvimento No-Code",
+    difficulty: "Médio",
+    estimatedIncome: "R$ 2.500 - R$ 8.000 / mês",
+    duration: "2-3 horas por chatbot",
+    iconName: "MessageSquare",
+    description: "Negócios locais (clínicas, imobiliárias, petshops, pizzarias) perdem dezenas de clientes diariamente por demorar para responder mensagens de WhatsApp. Você vai usar ferramentas no-code de chatbot (como Typebot, ManyChat ou n8n) integradas com inteligência artificial para automatizar 100% o atendimento inicial, qualificação de leads e agendamento dessas empresas, cobrando caro por isso.",
+    steps: [
+      {
+        id: "chat-step-1",
+        title: "Passo 1: Mapear o Fluxo de Atendimento do Cliente",
+        description: "Entreviste o cliente ou peça ao ChatGPT para estruturar o fluxo de perguntas e respostas ideal para qualificar o lead (ex: descobrir o nome, o serviço que busca e a data desejada).",
+        promptText: "Aja como um engenheiro de chatbot de conversão. Crie uma árvore de fluxo lógico passo a passo para um chatbot de WhatsApp de uma Clínica de Psicologia. O fluxo deve: 1) Dar as boas-vindas; 2) Identificar se é paciente novo ou antigo; 3) Perguntar a especialidade desejada; 4) Coletar o nome completo e telefone; 5) Encaminhar para o link de agendamento ou atendente humano com as informações salvas.",
+        actionLink: "https://chatgpt.com",
+        linkText: "Criar Estrutura no ChatGPT"
+      },
+      {
+        id: "chat-step-2",
+        title: "Passo 2: Construir o Chatbot Sem Código no Typebot ou ManyChat",
+        description: "Crie uma conta gratuita no Typebot ou ManyChat. Monte o fluxo arrastando e soltando blocos de texto, perguntas e botões. Conecte com a API do ChatGPT para que o chatbot responda dúvidas complexas dos clientes de forma natural e amigável.",
+        actionLink: "https://typebot.io",
+        linkText: "Construir Fluxo no Typebot"
+      },
+      {
+        id: "chat-step-3",
+        title: "Passo 3: Vender a Solução para Clínicas e Escritórios",
+        description: "Procure clínicas médicas, odontológicas, estéticas ou escritórios na sua cidade. Ofereça demonstrar um fluxo de agendamento interativo no seu próprio celular. Cobre de R$ 600,00 a R$ 1.500,00 pela criação (setup) e R$ 150,00 a R$ 300,00 por mês de manutenção.",
+        promptText: "Olá, equipe [NOME DO ESTABELECIMENTO]! Tudo bem? Notei que vocês têm um volume excelente de contatos mas o tempo de resposta às vezes pode demorar devido à correria do dia a dia. Eu criei um assistente inteligente em chatbot que qualifica e ajuda o paciente a agendar consultas pelo WhatsApp de forma instantânea, 24 horas por dia. Fiz um protótipo exclusivo para vocês verem como funciona: [INSERIR LINK DO TYPEBOT DE DEMONSTRAÇÃO]. Com essa automação, a equipe de recepção economiza horas de digitação e vocês reduzem a perda de pacientes em até 35%. Gostariam de testar o assistente no número oficial de vocês?",
+        actionLink: "https://web.whatsapp.com",
+        linkText: "Vender Soluções de Chatbot"
+      }
+    ],
+    tips: [
+      "Ofereça um período de testes de 7 dias grátis para o cliente sentir o alívio na recepção da clínica e ver a facilidade do atendimento automatizado.",
+      "Integre o chatbot com o Google Agenda usando o Make.com ou Zapier para agendar as consultas diretamente na agenda do profissional em tempo real.",
+      "Crie templates universais (um para clínicas de estética, outro para pizzarias, outro para imobiliárias) e simplesmente duplique para novos clientes para faturar muito mais rápido!"
+    ]
   }
 ];

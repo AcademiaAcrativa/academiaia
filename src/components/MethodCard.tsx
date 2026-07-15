@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { 
   Sparkles, Video, Briefcase, Check, Copy, ExternalLink, 
-  ChevronDown, ChevronUp, Clock, Target, Award, ShieldAlert, BookOpen, Camera
+  ChevronDown, ChevronUp, Clock, Target, Award, ShieldAlert, BookOpen, Camera, Mic, MessageSquare
 } from "lucide-react";
 import { Method } from "../types";
 
@@ -56,6 +56,10 @@ export default function MethodCard({ method, completedSteps, onToggleStep }: Met
         return <BookOpen {...props} />;
       case "Camera":
         return <Camera {...props} />;
+      case "Mic":
+        return <Mic {...props} />;
+      case "MessageSquare":
+        return <MessageSquare {...props} />;
       default:
         return <Sparkles {...props} />;
     }

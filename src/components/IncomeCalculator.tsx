@@ -32,6 +32,14 @@ export default function IncomeCalculator({ initialMethodId = "infoprodutos-ia" }
   const [m6Price, setM6Price] = useState<number>(29); // R$ 19 to R$ 49
   const [m6Dishes, setM6Dishes] = useState<number>(100); // monthly optimized photos
 
+  // States for Method 7 (Voiceovers)
+  const [m7Price, setM7Price] = useState<number>(60); // R$ 40 to R$ 150
+  const [m7Audios, setM7Audios] = useState<number>(35); // monthly audio tracks
+
+  // States for Method 8 (Chatbots)
+  const [m8Price, setM8Price] = useState<number>(800); // R$ 500 to R$ 2000
+  const [m8Clients, setM8Clients] = useState<number>(3); // monthly clients
+
   const [monthlyProfit, setMonthlyProfit] = useState<number>(0);
 
   // US Dollar to BRL exchange rate (fixed simulation value for conversion, e.g., 5.0)
@@ -52,8 +60,12 @@ export default function IncomeCalculator({ initialMethodId = "infoprodutos-ia" }
       setMonthlyProfit(m5Price * m5Clients);
     } else if (methodId === "melhorar-fotos-delivery") {
       setMonthlyProfit(m6Price * m6Dishes);
+    } else if (methodId === "criacao-voiceovers-ia") {
+      setMonthlyProfit(m7Price * m7Audios);
+    } else if (methodId === "chatbots-ia-atendimento") {
+      setMonthlyProfit(m8Price * m8Clients);
     }
-  }, [methodId, m1Price, m1Sales, m2Views, m2Rpm, m3Price, m3Clients, m4Price, m4Sales, m5Price, m5Clients, m6Price, m6Dishes]);
+  }, [methodId, m1Price, m1Sales, m2Views, m2Rpm, m3Price, m3Clients, m4Price, m4Sales, m5Price, m5Clients, m6Price, m6Dishes, m7Price, m7Audios, m8Price, m8Clients]);
 
   const formatBRL = (val: number) => {
     return new Intl.NumberFormat("pt-BR", {
@@ -138,6 +150,28 @@ export default function IncomeCalculator({ initialMethodId = "infoprodutos-ia" }
             }`}
           >
             Método 6 (Cardápios iFood)
+          </button>
+          <button
+            id="calc-method-m7"
+            onClick={() => setMethodId("criacao-voiceovers-ia")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              methodId === "criacao-voiceovers-ia"
+                ? "bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/20"
+                : "bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-750"
+            }`}
+          >
+            Método 7 (Locuções IA)
+          </button>
+          <button
+            id="calc-method-m8"
+            onClick={() => setMethodId("chatbots-ia-atendimento")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              methodId === "chatbots-ia-atendimento"
+                ? "bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/20"
+                : "bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-750"
+            }`}
+          >
+            Método 8 (Chatbots WhatsApp)
           </button>
         </div>
       </div>
@@ -469,6 +503,114 @@ export default function IncomeCalculator({ initialMethodId = "infoprodutos-ia" }
             </>
           )}
 
+          {methodId === "criacao-voiceovers-ia" && (
+            <>
+              {/* Slider 1: Voiceover Price */}
+              <div className="space-y-2">
+                <div className="flex justify-between items-center text-sm">
+                  <label htmlFor="m7-price-slider" className="text-slate-300 font-medium">Preço por Locução Comercial (R$)</label>
+                  <span className="font-mono text-emerald-400 font-bold bg-emerald-500/10 px-2.5 py-0.5 rounded border border-emerald-500/20">
+                    {formatBRL(m7Price)}
+                  </span>
+                </div>
+                <input
+                  id="m7-price-slider"
+                  type="range"
+                  min="40"
+                  max="150"
+                  step="5"
+                  value={m7Price}
+                  onChange={(e) => setM7Price(Number(e.target.value))}
+                  className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-400 focus:outline-none"
+                />
+                <div className="flex justify-between text-xs text-slate-500 font-mono">
+                  <span>R$ 40</span>
+                  <span>R$ 95</span>
+                  <span>R$ 150</span>
+                </div>
+              </div>
+
+              {/* Slider 2: Voiceover Tracks */}
+              <div className="space-y-2">
+                <div className="flex justify-between items-center text-sm">
+                  <label htmlFor="m7-audios-slider" className="text-slate-300 font-medium">Locuções Feitas no Mês</label>
+                  <span className="font-mono text-emerald-400 font-bold bg-emerald-500/10 px-2.5 py-0.5 rounded border border-emerald-500/20">
+                    {m7Audios} faixas
+                  </span>
+                </div>
+                <input
+                  id="m7-audios-slider"
+                  type="range"
+                  min="5"
+                  max="100"
+                  step="1"
+                  value={m7Audios}
+                  onChange={(e) => setM7Audios(Number(e.target.value))}
+                  className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-400 focus:outline-none"
+                />
+                <div className="flex justify-between text-xs text-slate-500 font-mono">
+                  <span>5 faixas</span>
+                  <span>50 faixas</span>
+                  <span>100 faixas</span>
+                </div>
+              </div>
+            </>
+          )}
+
+          {methodId === "chatbots-ia-atendimento" && (
+            <>
+              {/* Slider 1: Chatbot Price */}
+              <div className="space-y-2">
+                <div className="flex justify-between items-center text-sm">
+                  <label htmlFor="m8-price-slider" className="text-slate-300 font-medium">Valor de Setup por Chatbot (R$)</label>
+                  <span className="font-mono text-emerald-400 font-bold bg-emerald-500/10 px-2.5 py-0.5 rounded border border-emerald-500/20">
+                    {formatBRL(m8Price)}
+                  </span>
+                </div>
+                <input
+                  id="m8-price-slider"
+                  type="range"
+                  min="500"
+                  max="2000"
+                  step="100"
+                  value={m8Price}
+                  onChange={(e) => setM8Price(Number(e.target.value))}
+                  className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-400 focus:outline-none"
+                />
+                <div className="flex justify-between text-xs text-slate-500 font-mono">
+                  <span>R$ 500</span>
+                  <span>R$ 1.250</span>
+                  <span>R$ 2.000</span>
+                </div>
+              </div>
+
+              {/* Slider 2: Chatbot Clients */}
+              <div className="space-y-2">
+                <div className="flex justify-between items-center text-sm">
+                  <label htmlFor="m8-clients-slider" className="text-slate-300 font-medium">Novos Chatbots Vendidos</label>
+                  <span className="font-mono text-emerald-400 font-bold bg-emerald-500/10 px-2.5 py-0.5 rounded border border-emerald-500/20">
+                    {m8Clients} setups
+                  </span>
+                </div>
+                <input
+                  id="m8-clients-slider"
+                  type="range"
+                  min="1"
+                  max="15"
+                  step="1"
+                  value={m8Clients}
+                  onChange={(e) => setM8Clients(Number(e.target.value))}
+                  className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-400 focus:outline-none"
+                />
+                <div className="flex justify-between text-xs text-slate-500 font-mono">
+                  <span>1 setup</span>
+                  <span>8 setups</span>
+                  <span>15 setups</span>
+                </div>
+              </div>
+            </>
+          )}
+
           {/* Actionable insight box */}
           <div className="bg-slate-950/40 p-4 rounded-xl border border-slate-800 flex items-start gap-3">
             <Target className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
@@ -502,6 +644,16 @@ export default function IncomeCalculator({ initialMethodId = "infoprodutos-ia" }
               {methodId === "melhorar-fotos-delivery" && (
                 <p>
                   Otimizar {m6Dishes} pratos no mês com o valor de {formatBRL(m6Price)} significa atualizar cerca de {Math.round(m6Dishes / 15)} cardápios completos (calculando 15 pratos por restaurante). Basta fechar parcerias com apenas {Math.ceil(m6Dishes / 15)} novos estabelecimentos locais no mês para atingir essa excelente renda extra!
+                </p>
+              )}
+              {methodId === "criacao-voiceovers-ia" && (
+                <p>
+                  Gerar {m7Audios} locuções com valor de {formatBRL(m7Price)} é extremamente viável: média de apenas {Math.round(m7Audios / 4)} áudios por semana. Oferecendo pacotes para pequenas lojas locais fazerem seus anúncios semanais, você precisará de pouquíssimos parceiros recorrentes!
+                </p>
+              )}
+              {methodId === "chatbots-ia-atendimento" && (
+                <p>
+                  Vender {m8Clients} setups de chatbot por {formatBRL(m8Price)} representa fechar {m8Clients} clientes no mês inteiro. Demonstrando o fluxo interativo pronto para psicólogos, esteticistas ou advogados da sua região, o valor cobrado se paga na primeira semana de atendimento automatizado deles!
                 </p>
               )}
             </div>

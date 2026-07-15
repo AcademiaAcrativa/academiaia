@@ -8,6 +8,7 @@ import { METHODS } from "../data";
 import MethodCard from "./MethodCard";
 import IncomeCalculator from "./IncomeCalculator";
 import AIToolsLibrary from "./AIToolsLibrary";
+import MarketingDigital from "./MarketingDigital";
 
 interface DashboardProps {
   user: User;
@@ -33,7 +34,9 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
         "landing-pages-local": [],
         "vender-ebooks-ia": [],
         "gestao-social-media-ia": [],
-        "melhorar-fotos-delivery": []
+        "melhorar-fotos-delivery": [],
+        "criacao-voiceovers-ia": [],
+        "chatbots-ia-atendimento": []
       }
     };
   });
@@ -236,6 +239,11 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
               />
             </div>
           ))}
+        </section>
+
+        {/* Marketing Digital & Vendas section */}
+        <section id="marketing-digital-hub-section" className="pt-2 border-t border-slate-900">
+          <MarketingDigital />
         </section>
 
         {/* 80 AI Tools Library Section */}
