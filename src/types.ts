@@ -1,35 +1,52 @@
-export interface Step {
+export type PageType = 'capa' | 'rosto' | 'texto';
+export type FontFamily = 'Arial' | 'Times New Roman';
+
+export interface DocumentImage {
   id: string;
-  title: string;
-  description: string;
-  promptText?: string;
-  actionLink?: string;
-  linkText?: string;
+  src: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 }
 
-export interface Method {
+export interface BasePage {
   id: string;
+  type: PageType;
+  name: string;
+  images?: DocumentImage[];
+}
+
+export interface CapaPage extends BasePage {
+  type: 'capa';
+  institution: string;
+  author: string;
   title: string;
   subtitle: string;
-  category: string;
-  difficulty: "Fácil" | "Médio" | "Avançado";
-  estimatedIncome: string; // e.g. "R$ 500 - R$ 2.500/mês"
-  duration: string; // e.g. "2-3 horas"
-  iconName: string; // Lucide icon identifier
-  description: string;
-  steps: Step[];
-  tips: string[];
+  city: string;
+  year: string;
 }
 
-export interface User {
-  id: string;
-  name: string;
-  email: string;
-  password?: string;
-  createdAt: string;
+export interface RostoPage extends BasePage {
+  type: 'rosto';
+  author: string;
+  title: string;
+  subtitle: string;
+  note: string;
+  city: string;
+  year: string;
 }
 
-export interface UserProgress {
-  userId: string;
-  completedSteps: { [methodId: string]: string[] }; // lists of completed step IDs per method
+export interface TextoPage extends BasePage {
+  type: 'texto';
+  heading: string;
+  content: string;
+}
+
+export type Page = CapaPage | RostoPage | TextoPage;
+
+export interface DocumentState {
+  fontFamily: FontFamily;
+  pages: Page[];
+  activePageId: string | null;
 }

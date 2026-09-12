@@ -1,58 +1,533 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
+import { useState } from 'react';
+import { TopBar } from './components/TopBar';
+import { Toolbar } from './components/Toolbar';
+import { RightPanel } from './components/RightPanel';
+import { Canvas } from './components/Canvas';
+import { PrintView } from './components/PrintView';
+import { Home } from './components/Home';
+import { DocumentState, Page, PageType } from './types';
+import { syncSumarioPages } from './utils/sumario';
 
-import { useState, useEffect } from "react";
-import Login from "./components/Login";
-import Dashboard from "./components/Dashboard";
-import { User } from "./types";
+import { Layers, FilePlus, Download } from 'lucide-react';
+import html2pdf from 'html2pdf.js';
+
+import { Capacitor } from '@capacitor/core';
+import { Filesystem, Directory } from '@capacitor/filesystem';
+
+function generateId() {
+  return Math.random().toString(36).substr(2, 9);
+}
+
+export interface DevBlock {
+  id: string;
+  number: string;
+  title: string;
+  content: string;
+}
+
+export interface PreMountedData {
+  institution?: string;
+  author?: string;
+  title?: string;
+  subtitle?: string;
+  note?: string;
+  city?: string;
+  year?: string;
+  dedicatoria?: string;
+  agradecimentos?: string;
+  epigrafe?: string;
+  resumo?: string;
+  abstract?: string;
+  introducao?: string;
+  desenvolvimento?: string;
+  desenvolvimentos?: DevBlock[];
+  conclusao?: string;
+  referencias?: string;
+  anexos?: string;
+}
+
+const initialPages: Page[] = [
+  {
+    id: generateId(),
+    type: 'capa',
+    name: 'Capa',
+    institution: '',
+    author: '',
+    title: '',
+    subtitle: '',
+    city: '',
+    year: '',
+  },
+];
 
 export default function App() {
-  const [activeUser, setActiveUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [view, setView] = useState<'home' | 'editor'>('home');
+  const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [docState, setDocState] = useState<DocumentState>({
+    fontFamily: 'Arial',
+    pages: initialPages,
+    activePageId: initialPages[0].id,
+  });
 
-  // Check persistent login state on mount
-  useEffect(() => {
-    try {
-      const storedUser = localStorage.getItem("academia_ia_active_user");
-      if (storedUser) {
-        setActiveUser(JSON.parse(storedUser));
+  const handleCreateManual = () => {
+    setDocState({
+      fontFamily: 'Arial',
+      pages: initialPages,
+      activePageId: initialPages[0].id,
+    });
+    setView('editor');
+  };
+
+  const handleCreatePreMounted = (data?: PreMountedData) => {
+    const institution = data?.institution || 'ESCOLA TÉCNICA DO RIO DE JANEIRO';
+    const author = data?.author || 'DANILO SUPELETO\nFELIPE GÓES\nISABEL SOARES\nKAUÃ LIMA\nMIGUEL DO CARMO\nMIGUEL GONÇALVES\nTURMA: 1221';
+    const title = data?.title || 'ROBÔ DE COMBATE A INCÊNDIOS (CARRINHO BOMBEIRO)';
+    const subtitle = data?.subtitle || 'Relatório da Feira de Ciências e Informação Profissional 2024';
+    const note = data?.note || 'Relatório final, apresentado à Escola Técnica do Rio de Janeiro, como parte das exigências para obtenção da nota da Feira de Ciências e Informação Profissional.\n\nProfessores Orientadores:\nConteúdo: Nome, Titulação.\nMetodologia: Nome, Titulação.';
+    const city = data?.city || 'RIO DE JANEIRO - RJ';
+    const year = data?.year || '2024';
+
+    const capaId = generateId();
+    const rostoId = generateId();
+    const dedId = generateId();
+    const agradId = generateId();
+    const epigId = generateId();
+    const resumoId = generateId();
+    const abstractId = generateId();
+    const sumarioId = generateId();
+    const introId = generateId();
+    const devId = generateId();
+    const dev2Id = generateId();
+    const conclId = generateId();
+    const refId = generateId();
+    const anexoId = generateId();
+
+    const devPages: Page[] = [];
+    const hasCustomDev = (data?.desenvolvimentos && data.desenvolvimentos.some(b => b.content.trim() || b.title.trim())) || data?.desenvolvimento;
+
+    if (hasCustomDev) {
+      if (data?.desenvolvimentos && data.desenvolvimentos.length > 0) {
+        const validBlocks = data.desenvolvimentos.filter(b => b.content.trim() || b.title.trim());
+        
+        if (validBlocks.length === 0) {
+          devPages.push({
+            id: devId,
+            type: 'texto',
+            name: 'Desenvolvimento',
+            heading: '2 DESENVOLVIMENTO',
+            content: '',
+          });
+        } else {
+          let currentContent = '';
+          let currentHeading = '2 DESENVOLVIMENTO';
+          let currentPageName = 'Desenvolvimento';
+          let isFirstPage = true;
+
+          validBlocks.forEach((block, idx) => {
+            const blockHeader = block.number === '2' 
+              ? '' 
+              : `${block.number} ${block.title ? block.title.toUpperCase() : ''}`.trim();
+            const blockFullText = blockHeader ? `${blockHeader}\n${block.content.trim()}` : block.content.trim();
+
+            if (!blockFullText) return;
+
+            const wouldExceed = currentContent.length > 0 && (currentContent.length + blockFullText.length > 1100);
+
+            if (wouldExceed) {
+              devPages.push({
+                id: generateId(),
+                type: 'texto',
+                name: currentPageName,
+                heading: isFirstPage ? '2 DESENVOLVIMENTO' : currentHeading,
+                content: currentContent.trim(),
+              });
+
+              isFirstPage = false;
+              currentContent = blockFullText;
+              currentHeading = blockHeader || `2.${idx} DESENVOLVIMENTO`;
+              currentPageName = `Desenvolvimento ${block.number}`;
+            } else {
+              if (currentContent.length > 0) {
+                currentContent += '\n\n' + blockFullText;
+              } else {
+                currentContent = blockFullText;
+                if (!isFirstPage && blockHeader) {
+                  currentHeading = blockHeader;
+                  currentPageName = `Desenvolvimento ${block.number}`;
+                }
+              }
+            }
+          });
+
+          if (currentContent.trim()) {
+            devPages.push({
+              id: isFirstPage ? devId : generateId(),
+              type: 'texto',
+              name: currentPageName,
+              heading: isFirstPage ? '2 DESENVOLVIMENTO' : currentHeading,
+              content: currentContent.trim(),
+            });
+          }
+        }
+      } else if (data?.desenvolvimento) {
+        devPages.push({
+          id: devId,
+          type: 'texto',
+          name: 'Desenvolvimento',
+          heading: '2 DESENVOLVIMENTO',
+          content: data.desenvolvimento,
+        });
       }
-    } catch (e) {
-      console.error("Failed to parse stored active user", e);
-    } finally {
-      setLoading(false);
+    } else {
+      devPages.push(
+        {
+          id: devId,
+          type: 'texto',
+          name: 'Desenvolvimento',
+          heading: '2 DESENVOLVIMENTO',
+          content: '2.1 O que é o robô de combate a incêndios\nConsiste em um dispositivo eletrônico e autônomo que detecta o fogo e se dirige a ele por meio de um comando gerado pelos sensores de chama e pelo Arduino. O Arduino processa as informações dos sensores e envia os comandos apropriados para as rodas, permitindo que o carrinho se mova para frente e para trás conforme necessário.\n\n2.2 Objetivo do projeto\nO principal objetivo é proporcionar um auxílio eficaz no combate a incêndios domésticos, além de ser adaptável para grandes incêndios em colaboração com bombeiros, utilizando materiais mais resistentes e sensores mais robustos. A intenção é desenvolver um dispositivo capaz de conter a propagação do fogo, prevenindo possíveis incêndios e, assim, potencialmente salvando vidas.',
+          images: [
+            {
+              id: 'img-robot-1',
+              src: 'https://res.cloudinary.com/ogrsouif/image/upload/v1787919498/images__3_-removebg-preview.png',
+              x: 180,
+              y: 350,
+              width: 320,
+              height: 200
+            }
+          ]
+        },
+        {
+          id: dev2Id,
+          type: 'texto',
+          name: 'Componentes e Circuito',
+          heading: '2.3 Vantagens, Desvantagens e Construção Técnica',
+          content: '2.3.1 Vantagens: Uma de suas grandes vantagens é a ação sem a influência do ser humano, por mais que seja um protótipo é automático, então não precisa que alguém o controle para que faça sua movimentação, outra vantagem é que não precisa ficar ligado diretamente na tomada, pois não usa mais de 12V esse protótipo.\n\n2.3.2 Desvantagens: Algumas das vantagens estão ligadas às baterias e a água jorrada pelo robô. Em questão da bateria, é utilizada uma bateria de 9V para ligar todo o circuito, podemos usar uma bateria recarregável, porém teríamos de carregar o tempo todo. Já a questão da água, é relacionada ao recipiente para armazená-la pois se usar um tamanho muito pequeno fica pouca água e teria que reabastecer o tempo todo, agora se for muito grande fica muito pesado e assim fazendo o robô tendo uma certa dificuldade de locomoção.\n\n2.4 Construção técnica\nA construção técnica do projeto é constituída por apenas um circuito principal baseado em arduino, que é alimentado por uma fonte de 12V.\n\n2.4.1 Circuito principal\nO circuito principal está localizado dentro do carrinho e possui o objetivo de fazer o acionamento do projeto. A seguir, veja a função de cada componente no circuito:',
+          images: [
+            {
+              id: 'img-circuit-1',
+              src: 'https://res.cloudinary.com/ogrsouif/image/upload/v1787919563/images_3.jpg',
+              x: 150,
+              y: 520,
+              width: 360,
+              height: 250
+            }
+          ]
+        }
+      );
     }
-  }, []);
 
-  const handleLoginSuccess = (user: User) => {
-    setActiveUser(user);
-    localStorage.setItem("academia_ia_active_user", JSON.stringify(user));
+    const pages: Page[] = [
+      {
+        id: capaId,
+        type: 'capa',
+        name: 'Capa',
+        institution,
+        author,
+        title,
+        subtitle,
+        city,
+        year,
+      },
+      {
+        id: rostoId,
+        type: 'rosto',
+        name: 'Folha de Rosto',
+        author,
+        title,
+        subtitle,
+        note,
+        city,
+        year,
+      },
+      {
+        id: dedId,
+        type: 'texto',
+        name: 'Dedicatória',
+        heading: 'DEDICATÓRIA',
+        content: data?.dedicatoria || 'Dedico este trabalho a todos os meus familiares, professores e colegas de curso que me apoiaram durante o processo de aprendizagem.',
+      },
+      {
+        id: agradId,
+        type: 'texto',
+        name: 'Agradecimentos',
+        heading: 'AGRADECIMENTOS',
+        content: data?.agradecimentos || 'Agradeço à instituição, aos meus professores e a todos que contribuíram direta ou indiretamente para a realização deste relatório.',
+      },
+      {
+        id: epigId,
+        type: 'texto',
+        name: 'Epígrafe',
+        heading: 'EPÍGRAFE',
+        content: data?.epigrafe || '"A mente que se abre a uma nova idéia jamais voltará ao seu tamanho original."\n— Albert Einstein',
+      },
+      {
+        id: resumoId,
+        type: 'texto',
+        name: 'Resumo',
+        heading: 'RESUMO',
+        content: data?.resumo || 'O objetivo deste relatório é fornecer uma visão detalhada sobre o robô de combate a incêndios. O projeto envolve a construção de um veículo autônomo capaz de se deslocar automaticamente e manualmente através de uma chave liga e desliga. O robô é equipado com sensores na parte frontal, incluindo três sensores de chama, um sensor de gás e fumaça, e um sensor ultrassônico. Esses sensores trabalham continuamente para detectar fogo e fumaça. Quando o robô identifica um incêndio, ele se direciona automaticamente para o local e realiza a extinção do fogo de forma independente.\n\nPalavras-chave: Incêndio, robô, carro',
+      },
+      {
+        id: abstractId,
+        type: 'texto',
+        name: 'Abstract',
+        heading: 'ABSTRACT',
+        content: data?.abstract || 'The purpose of this report is to provide a detailed overview of the fire-fighting robot. The project involves building an autonomous vehicle capable of moving both automatically and manually via a power switch. The robot is equipped with front-facing sensors, including three flame detectors, one gas and smoke sensor, and one ultrasonic sensor. These sensors continuously work to detect fire and smoke. When the robot identifies a fire, it automatically navigates to the location and extinguishes the fire independently.\n\nKeywords: Fire, robot, car',
+      },
+      {
+        id: sumarioId,
+        type: 'texto',
+        name: 'Sumário',
+        heading: 'SUMÁRIO',
+        content: '1 INTRODUÇÃO ............................................................................................ 6\n2 DESENVOLVIMENTO ................................................................................... 7\n  2.1 O que é o robô? .............................................................................. 7\n  2.2 Objetivo do projeto .......................................................................... 7\n  2.3 Vantagens e desvantagens .......................................................... 8\n    2.3.1 Vantagens ................................................................................... 8\n    2.3.2 Desvantagens ............................................................................... 8\n  2.4 Construção técnica ....................................................................... 8\n    2.4.1 Circuito principal .................................................................          8\n  2.5 Funcionamento do projeto .......................................................... 14\n  2.6 Produtos similares existentes no mercado ................................... 14\n  2.7 Custo do projeto ......................................................................... 15\n3 CONCLUSÃO .............................................................................................. 16\n4 ANEXOS .................................................................................................         19\n5 PLANO DE ORÇAMENTOS .................................................................. 17\n6 TABELA DE PRAZOS .................................................................          18\n7 REFERÊNCIAS .................................................................................   20',
+      },
+      {
+        id: introId,
+        type: 'texto',
+        name: 'Introdução',
+        heading: '1 INTRODUÇÃO',
+        content: data?.introducao || 'De acordo com o National Crime Records Bureau (NCRB), estima-se que mais de 1,2 mortes foram causadas por acidentes de incêndio na Índia entre 2010-2014. Em caso de incêndio, para resgatar pessoas e apagar o fogo somos obrigados a utilizar recursos humanos que não são seguros. Com o avanço da tecnologia principalmente na Robótica é muito possível substituir humanos por robôs no combate ao incêndio. Isto melhoraria a eficiência dos bombeiros e também os impediria de arriscar vidas humanas. O robô de combate a incêndios é baseado em arduino e detecta o fogo automaticamente e em seguida aciona uma bomba d\'água para apagá-lo, o robô se move em direção ao fogo, e aciona a bomba pra apagá-lo.',
+      },
+      ...devPages,
+      {
+        id: conclId,
+        type: 'texto',
+        name: 'Conclusão',
+        heading: '3 CONCLUSÃO',
+        content: data?.conclusao || 'O desenvolvimento do robô de combate a incêndios demonstrou a viabilidade e a eficácia da utilização de sistemas embarcados baseados em Arduino na automação de processos de segurança. O protótipo cumpriu os objetivos propostos de detecção rápida de focos de incêndio e acionamento autônomo da bomba d\'água, minimizando riscos humanos em situações críticas.',
+      },
+      {
+        id: refId,
+        type: 'texto',
+        name: 'Referências',
+        heading: 'REFERÊNCIAS',
+        content: data?.referencias || 'ASSOCIAÇÃO BRASILEIRA DE NORMAS TÉCNICAS. NBR 14724: Informação e documentação — Trabalhos acadêmicos — Apresentação. Rio de Janeiro: ABNT, 2011.\n\nNATIONAL CRIME RECORDS BUREAU (NCRB). Accident deaths and suicides in India. New Delhi: Ministry of Home Affairs, 2014.\n\nSLATER, J. Programming Arduino with Interactive Sensors. New York: Tech Books, 2018.',
+      },
+      {
+        id: anexoId,
+        type: 'texto',
+        name: 'Anexos',
+        heading: 'ANEXOS',
+        content: data?.anexos || 'ANEXO A — Diagrama esquemático detalhado e tabela de custos dos componentes do robô de combate a incêndios.',
+      },
+    ];
+
+    const syncedPages = syncSumarioPages(pages);
+
+    setDocState({
+      fontFamily: 'Arial',
+      pages: syncedPages,
+      activePageId: capaId,
+    });
+    setView('editor');
   };
 
-  const handleLogout = () => {
-    setActiveUser(null);
-    localStorage.removeItem("academia_ia_active_user");
+  const addPage = (name: string, type: PageType) => {
+    let newPage: Page;
+    const id = generateId();
+    let displayName = name;
+
+    if (name === 'Resumo na língua vernácula') displayName = 'Resumo';
+    else if (name === 'Resumo em língua estrangeira (Abstract)') displayName = 'Abstract';
+    else if (name === 'Dedicatória(s)') displayName = 'Dedicatória';
+    else if (name === 'Agradecimento(s)') displayName = 'Agradecimentos';
+    else if (name === 'Anexo(s)') displayName = 'Anexos';
+    else if (name === 'Apêndice(s)') displayName = 'Apêndices';
+
+    if (type === 'capa') {
+      newPage = { id, type: 'capa', name: displayName, institution: '', author: '', title: '', subtitle: '', city: '', year: '' };
+    } else if (type === 'rosto') {
+      newPage = { id, type: 'rosto', name: displayName, author: '', title: '', subtitle: '', note: 'Relatório final apresentado à Escola Técnica do Rio de Janeiro como parte dos requisitos acadêmicos.', city: '', year: '' };
+    } else {
+      let heading = displayName.toUpperCase();
+      if (displayName === 'Desenvolvimento') heading = '2 DESENVOLVIMENTO';
+      else if (displayName === 'Introdução') heading = '1 INTRODUÇÃO';
+      else if (displayName === 'Conclusão') heading = '3 CONCLUSÃO';
+      else if (displayName === 'Resumo') heading = 'RESUMO';
+      else if (displayName === 'Abstract') heading = 'ABSTRACT';
+      else if (displayName === 'Dedicatória') heading = 'DEDICATÓRIA';
+      else if (displayName === 'Agradecimentos') heading = 'AGRADECIMENTOS';
+      else if (displayName === 'Epígrafe') heading = 'EPÍGRAFE';
+      else if (displayName === 'Sumário') heading = 'SUMÁRIO';
+      else if (displayName === 'Referências') heading = 'REFERÊNCIAS';
+      else if (displayName === 'Anexos') heading = 'ANEXOS';
+      else if (displayName === 'Apêndices') heading = 'APÊNDICES';
+
+      newPage = { id, type: 'texto', name: displayName, heading, content: '' };
+    }
+    setDocState((prev) => {
+      const updatedPages = [...prev.pages, newPage];
+      return {
+        ...prev,
+        pages: syncSumarioPages(updatedPages),
+        activePageId: id,
+      };
+    });
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-slate-400 font-mono text-xs">
-        <div className="w-8 h-8 border-2 border-emerald-500/25 border-t-emerald-500 rounded-full animate-spin mb-4"></div>
-        <span>Carregando Academia...</span>
-      </div>
-    );
-  }
+  const updatePage = (id: string, updates: Partial<Page>) => {
+    setDocState((prev) => {
+      const updatedPages = prev.pages.map((p) => (p.id === id ? { ...p, ...updates } as Page : p));
+      return {
+        ...prev,
+        pages: syncSumarioPages(updatedPages),
+      };
+    });
+  };
+
+  const handleExportPDF = () => {
+    const element = document.getElementById('print-container');
+    if (!element) {
+      // Fallback to print if container not found
+      window.print();
+      return;
+    }
+
+    // Options for html2pdf
+    const opt = {
+      margin: 0,
+      filename: 'Relatorio_ABNT.pdf',
+      image: { type: 'jpeg' as const, quality: 0.98 },
+      html2canvas: { 
+        scale: 2, 
+        useCORS: true, 
+        logging: false,
+        letterRendering: true,
+        windowWidth: 794 // Force width to match A4 pixel calculation
+      },
+      jsPDF: { unit: 'mm' as const, format: 'a4' as const, orientation: 'portrait' as const }
+    };
+
+    // Temporarily show the element for capturing
+    const originalStyle = element.style.cssText;
+    element.style.display = 'block';
+    element.style.position = 'fixed';
+    element.style.top = '0';
+    element.style.left = '0';
+    element.style.zIndex = '-9999';
+    element.style.visibility = 'visible';
+
+    // Show a loading state
+    setIsGeneratingPDF(true);
+
+    if (Capacitor.isNativePlatform()) {
+      // Native App logic (Capacitor/Android)
+      html2pdf().set(opt).from(element).outputPdf('datauristring').then(async (pdfDataUri: string) => {
+        try {
+          const base64Data = pdfDataUri.split(',')[1];
+          const fileName = `Relatorio_ABNT_${new Date().getTime()}.pdf`;
+          
+          await Filesystem.writeFile({
+            path: fileName,
+            data: base64Data,
+            directory: Directory.Documents
+          });
+          
+          alert('✅ PDF salvo com sucesso na sua pasta de Documentos!');
+        } catch (e: any) {
+          console.error(e);
+          alert('Erro ao salvar o PDF: ' + e.message);
+        } finally {
+          element.style.cssText = originalStyle;
+          setIsGeneratingPDF(false);
+        }
+      }).catch((err: any) => {
+        console.error('PDF Generation failed:', err);
+        element.style.cssText = originalStyle;
+        setIsGeneratingPDF(false);
+      });
+    } else {
+      // Browser logic
+      html2pdf().set(opt).from(element).save().then(() => {
+        // Restore original state
+        element.style.cssText = originalStyle;
+        setIsGeneratingPDF(false);
+      }).catch((err: any) => {
+        console.error('PDF Generation failed:', err);
+        element.style.cssText = originalStyle;
+        setIsGeneratingPDF(false);
+        // Fallback to print on error
+        window.print();
+      });
+    }
+  };
 
   return (
-    <>
-      {activeUser ? (
-        <Dashboard user={activeUser} onLogout={handleLogout} />
-      ) : (
-        <Login onLoginSuccess={handleLoginSuccess} />
+    <div className="flex flex-col h-screen bg-[#262626] text-zinc-300 font-sans overflow-hidden">
+      {isGeneratingPDF && (
+        <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center space-y-4">
+          <div className="w-12 h-12 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-white font-medium animate-pulse">Gerando seu PDF ABNT...</p>
+          <p className="text-zinc-400 text-xs">Isso pode levar alguns segundos dependendo do tamanho.</p>
+        </div>
       )}
-    </>
+      <TopBar onHome={() => setView('home')} onExportPDF={handleExportPDF} />
+      {view === 'home' ? (
+        <Home 
+          onCreateManual={handleCreateManual} 
+          onCreatePreMounted={handleCreatePreMounted}
+        />
+      ) : (
+        <div className="flex flex-1 overflow-hidden relative">
+          <Toolbar onAddPage={() => addPage('Nova Página', 'texto')} onExportPDF={handleExportPDF} />
+          
+          <div className="flex-1 flex flex-col h-full overflow-hidden relative">
+            <Canvas docState={docState} onUpdatePage={updatePage} />
+
+            {/* Mobile Bottom Control Bar */}
+            <div className="md:hidden bg-[#2a2a2a] border-t border-[#1e1e1e] px-3 py-2 flex items-center justify-between z-20 shrink-0">
+              <button
+                onClick={() => setMobilePanelOpen(true)}
+                className="flex items-center space-x-1.5 px-3 py-1.5 bg-[#383838] hover:bg-[#404040] text-zinc-200 text-xs font-medium rounded-lg border border-[#484848] transition-colors"
+              >
+                <Layers size={14} className="text-cyan-400" />
+                <span>Páginas ({docState.pages.length})</span>
+              </button>
+
+              <button
+                onClick={() => addPage('Nova Página', 'texto')}
+                className="flex items-center space-x-1.5 px-3 py-1.5 bg-[#383838] hover:bg-[#404040] text-zinc-200 text-xs font-medium rounded-lg border border-[#484848] transition-colors"
+              >
+                <FilePlus size={14} className="text-cyan-400" />
+                <span>+ Página</span>
+              </button>
+
+              <button
+                onClick={handleExportPDF}
+                className="flex items-center space-x-1 px-3 py-1.5 bg-[#1473e6] hover:bg-[#105cba] text-white text-xs font-medium rounded-lg transition-colors shadow-sm"
+              >
+                <Download size={14} />
+                <span>PDF</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Desktop RightPanel */}
+          <div className="hidden md:block">
+            <RightPanel docState={docState} setDocState={setDocState} onAddPage={addPage} onUpdatePage={updatePage} />
+          </div>
+
+          {/* Mobile RightPanel Slide-over Drawer */}
+          {mobilePanelOpen && (
+            <div className="md:hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex justify-end">
+              <div className="w-4/5 max-w-xs h-full bg-[#323232] shadow-2xl flex flex-col">
+                <RightPanel 
+                  docState={docState} 
+                  setDocState={setDocState} 
+                  onAddPage={addPage} 
+                  onUpdatePage={updatePage}
+                  className="h-full border-none"
+                  onCloseMobile={() => setMobilePanelOpen(false)}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+      <PrintView docState={docState} />
+    </div>
   );
 }
 

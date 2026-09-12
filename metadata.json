@@ -1,6 +1,6 @@
 {
-  "name": "Academia IA Lucrativa",
-  "description": "Aprenda métodos comprovados passo a passo para gerar renda na internet utilizando o poder da Inteligência Artificial.",
+  "name": "Relatorio Eterj VTNC",
+  "description": "Gerador de relatórios acadêmicos e técnicos padronizados segundo as normas da ETERJ e ABNT",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
