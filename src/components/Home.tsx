@@ -48,7 +48,7 @@ export function Home({ onCreateManual, onCreatePreMounted }: Props) {
   const [abstractText, setAbstractText] = useState('');
   const [introducao, setIntroducao] = useState('');
   const [devBlocks, setDevBlocks] = useState<DevBlock[]>([
-    { id: 'dev-2', number: '2', title: '', content: '' }
+    { id: 'dev-2', number: '2', title: 'Desenvolvimento Principal', content: '' }
   ]);
   const [conclusao, setConclusao] = useState('');
   const [referencias, setReferencias] = useState('');
@@ -521,19 +521,17 @@ Gere os seguintes textos separados, mantendo linguagem formal, acadêmica e impe
                                   <span className="px-2 py-0.5 rounded bg-[#00c8ff]/20 text-[#00c8ff] text-xs font-bold font-mono">
                                     {block.number}
                                   </span>
-                                  {isMain ? (
-                                    <span className="text-xs font-medium text-zinc-200">
-                                      Desenvolvimento Principal (2)
-                                    </span>
-                                  ) : (
-                                    <input
-                                      type="text"
-                                      placeholder={`Título do subtópico ${block.number} (ex: Funcionamento do Circuito)`}
-                                      value={block.title}
-                                      onChange={e => handleUpdateDevBlock(block.id, 'title', e.target.value)}
-                                      className="flex-1 bg-[#181818] border border-[#404040] rounded px-2.5 py-1 text-white text-xs focus:outline-none focus:border-[#00c8ff]"
-                                    />
-                                  )}
+                                  <input
+                                    type="text"
+                                    placeholder={
+                                      isMain
+                                        ? "Nome do Desenvolvimento Principal (ex: Desenvolvimento Principal)"
+                                        : `Título do subtópico ${block.number} (ex: Funcionamento do Circuito)`
+                                    }
+                                    value={block.title}
+                                    onChange={e => handleUpdateDevBlock(block.id, 'title', e.target.value)}
+                                    className="flex-1 bg-[#181818] border border-[#404040] rounded px-2.5 py-1 text-white text-xs focus:outline-none focus:border-[#00c8ff]"
+                                  />
                                 </div>
                                 {!isMain && (
                                   <button

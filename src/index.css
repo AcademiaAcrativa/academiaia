@@ -2,17 +2,32 @@
 
 @media print {
   @page {
-    size: A4;
+    size: A4 portrait;
     margin: 0;
   }
-  body {
-    -webkit-print-color-adjust: exact;
-    background: white;
-    margin: 0;
+  html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  .no-print, .print\:hidden {
+    display: none !important;
   }
   .page-break-after-always {
-    page-break-after: always;
-    break-after: page;
+    page-break-after: always !important;
+    break-after: page !important;
+  }
+  #print-export-wrapper {
+    position: static !important;
+    top: auto !important;
+    left: auto !important;
+    opacity: 1 !important;
+    z-index: auto !important;
+    display: block !important;
+    width: 100% !important;
+    background: #ffffff !important;
   }
 }
 
@@ -25,5 +40,3 @@
   text-indent: 1.25cm;
   margin-bottom: 0;
 }
-
-

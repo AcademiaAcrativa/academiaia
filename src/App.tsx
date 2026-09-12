@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { TopBar } from './components/TopBar';
 import { Toolbar } from './components/Toolbar';
 import { RightPanel } from './components/RightPanel';
@@ -9,7 +9,8 @@ import { DocumentState, Page, PageType } from './types';
 import { syncSumarioPages } from './utils/sumario';
 
 import { Layers, FilePlus, Download } from 'lucide-react';
-import html2pdf from 'html2pdf.js';
+import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
 
 import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
@@ -70,6 +71,13 @@ export default function App() {
     activePageId: initialPages[0].id,
   });
 
+  useEffect(() => {
+    setDocState((prev) => ({
+      ...prev,
+      pages: syncSumarioPages(prev.pages, { force: true }),
+    }));
+  }, []);
+
   const handleCreateManual = () => {
     setDocState({
       fontFamily: 'Arial',
@@ -109,23 +117,29 @@ export default function App() {
     if (hasCustomDev) {
       if (data?.desenvolvimentos && data.desenvolvimentos.length > 0) {
         const validBlocks = data.desenvolvimentos.filter(b => b.content.trim() || b.title.trim());
+        const mainBlock = data.desenvolvimentos.find(b => b.number === '2') || validBlocks[0];
+        const mainTitle = (mainBlock?.title || '').trim() || 'Desenvolvimento Principal';
+        const mainHeading = mainTitle.toUpperCase().startsWith('2')
+          ? mainTitle.toUpperCase()
+          : `2 ${mainTitle.toUpperCase()}`;
         
         if (validBlocks.length === 0) {
           devPages.push({
             id: devId,
             type: 'texto',
-            name: 'Desenvolvimento',
-            heading: '2 DESENVOLVIMENTO',
+            name: mainTitle,
+            heading: mainHeading,
             content: '',
           });
         } else {
           let currentContent = '';
-          let currentHeading = '2 DESENVOLVIMENTO';
-          let currentPageName = 'Desenvolvimento';
+          let currentHeading = mainHeading;
+          let currentPageName = mainTitle;
           let isFirstPage = true;
 
           validBlocks.forEach((block, idx) => {
-            const blockHeader = block.number === '2' 
+            const isMainBlock = block.number === '2';
+            const blockHeader = isMainBlock 
               ? '' 
               : `${block.number} ${block.title ? block.title.toUpperCase() : ''}`.trim();
             const blockFullText = blockHeader ? `${blockHeader}\n${block.content.trim()}` : block.content.trim();
@@ -139,14 +153,14 @@ export default function App() {
                 id: generateId(),
                 type: 'texto',
                 name: currentPageName,
-                heading: isFirstPage ? '2 DESENVOLVIMENTO' : currentHeading,
+                heading: isFirstPage ? mainHeading : currentHeading,
                 content: currentContent.trim(),
               });
 
               isFirstPage = false;
               currentContent = blockFullText;
-              currentHeading = blockHeader || `2.${idx} DESENVOLVIMENTO`;
-              currentPageName = `Desenvolvimento ${block.number}`;
+              currentHeading = blockHeader || `2.${idx} ${mainTitle.toUpperCase()}`;
+              currentPageName = block.title ? `${block.number} ${block.title}` : `Desenvolvimento ${block.number}`;
             } else {
               if (currentContent.length > 0) {
                 currentContent += '\n\n' + blockFullText;
@@ -154,7 +168,7 @@ export default function App() {
                 currentContent = blockFullText;
                 if (!isFirstPage && blockHeader) {
                   currentHeading = blockHeader;
-                  currentPageName = `Desenvolvimento ${block.number}`;
+                  currentPageName = block.title ? `${block.number} ${block.title}` : `Desenvolvimento ${block.number}`;
                 }
               }
             }
@@ -165,7 +179,7 @@ export default function App() {
               id: isFirstPage ? devId : generateId(),
               type: 'texto',
               name: currentPageName,
-              heading: isFirstPage ? '2 DESENVOLVIMENTO' : currentHeading,
+              heading: isFirstPage ? mainHeading : currentHeading,
               content: currentContent.trim(),
             });
           }
@@ -174,8 +188,8 @@ export default function App() {
         devPages.push({
           id: devId,
           type: 'texto',
-          name: 'Desenvolvimento',
-          heading: '2 DESENVOLVIMENTO',
+          name: 'Desenvolvimento Principal',
+          heading: '2 DESENVOLVIMENTO PRINCIPAL',
           content: data.desenvolvimento,
         });
       }
@@ -184,8 +198,8 @@ export default function App() {
         {
           id: devId,
           type: 'texto',
-          name: 'Desenvolvimento',
-          heading: '2 DESENVOLVIMENTO',
+          name: 'Desenvolvimento Principal',
+          heading: '2 DESENVOLVIMENTO PRINCIPAL',
           content: '2.1 O que é o robô de combate a incêndios\nConsiste em um dispositivo eletrônico e autônomo que detecta o fogo e se dirige a ele por meio de um comando gerado pelos sensores de chama e pelo Arduino. O Arduino processa as informações dos sensores e envia os comandos apropriados para as rodas, permitindo que o carrinho se mova para frente e para trás conforme necessário.\n\n2.2 Objetivo do projeto\nO principal objetivo é proporcionar um auxílio eficaz no combate a incêndios domésticos, além de ser adaptável para grandes incêndios em colaboração com bombeiros, utilizando materiais mais resistentes e sensores mais robustos. A intenção é desenvolver um dispositivo capaz de conter a propagação do fogo, prevenindo possíveis incêndios e, assim, potencialmente salvando vidas.',
           images: [
             {
@@ -203,7 +217,7 @@ export default function App() {
           type: 'texto',
           name: 'Componentes e Circuito',
           heading: '2.3 Vantagens, Desvantagens e Construção Técnica',
-          content: '2.3.1 Vantagens: Uma de suas grandes vantagens é a ação sem a influência do ser humano, por mais que seja um protótipo é automático, então não precisa que alguém o controle para que faça sua movimentação, outra vantagem é que não precisa ficar ligado diretamente na tomada, pois não usa mais de 12V esse protótipo.\n\n2.3.2 Desvantagens: Algumas das vantagens estão ligadas às baterias e a água jorrada pelo robô. Em questão da bateria, é utilizada uma bateria de 9V para ligar todo o circuito, podemos usar uma bateria recarregável, porém teríamos de carregar o tempo todo. Já a questão da água, é relacionada ao recipiente para armazená-la pois se usar um tamanho muito pequeno fica pouca água e teria que reabastecer o tempo todo, agora se for muito grande fica muito pesado e assim fazendo o robô tendo uma certa dificuldade de locomoção.\n\n2.4 Construção técnica\nA construção técnica do projeto é constituída por apenas um circuito principal baseado em arduino, que é alimentado por uma fonte de 12V.\n\n2.4.1 Circuito principal\nO circuito principal está localizado dentro do carrinho e possui o objetivo de fazer o acionamento do projeto. A seguir, veja a função de cada componente no circuito:',
+          content: '2.3.1 Vantagens\nUma de suas grandes vantagens é a ação sem a influência do ser humano, por mais que seja um protótipo é automático, então não precisa que alguém o controle para que faça sua movimentação, outra vantagem é que não precisa ficar ligado diretamente na tomada, pois não usa mais de 12V esse protótipo.\n\n2.3.2 Desvantagens\nAlgumas das vantagens estão ligadas às baterias e a água jorrada pelo robô. Em questão da bateria, é utilizada uma bateria de 9V para ligar todo o circuito, podemos usar uma bateria recarregável, porém teríamos de carregar o tempo todo. Já a questão da água, é relacionada ao recipiente para armazená-la pois se usar um tamanho muito pequeno fica pouca água e teria que reabastecer o tempo todo, agora se for muito grande fica muito pesado e assim fazendo o robô tendo uma certa dificuldade de locomoção.\n\n2.4 Construção técnica\nA construção técnica do projeto é constituída por apenas um circuito principal baseado em arduino, que é alimentado por uma fonte de 12V.\n\n2.4.1 Circuito principal\nO circuito principal está localizado dentro do carrinho e possui o objetivo de fazer o acionamento do projeto. A seguir, veja a função de cada componente no circuito:',
           images: [
             {
               id: 'img-circuit-1',
@@ -342,7 +356,10 @@ export default function App() {
       newPage = { id, type: 'rosto', name: displayName, author: '', title: '', subtitle: '', note: 'Relatório final apresentado à Escola Técnica do Rio de Janeiro como parte dos requisitos acadêmicos.', city: '', year: '' };
     } else {
       let heading = displayName.toUpperCase();
-      if (displayName === 'Desenvolvimento') heading = '2 DESENVOLVIMENTO';
+      if (displayName === 'Desenvolvimento' || displayName === 'Desenvolvimento Principal') {
+        displayName = 'Desenvolvimento Principal';
+        heading = '2 DESENVOLVIMENTO PRINCIPAL';
+      }
       else if (displayName === 'Introdução') heading = '1 INTRODUÇÃO';
       else if (displayName === 'Conclusão') heading = '3 CONCLUSÃO';
       else if (displayName === 'Resumo') heading = 'RESUMO';
@@ -369,89 +386,82 @@ export default function App() {
 
   const updatePage = (id: string, updates: Partial<Page>) => {
     setDocState((prev) => {
+      const activeIdx = prev.pages.findIndex((p) => p.id === id);
       const updatedPages = prev.pages.map((p) => (p.id === id ? { ...p, ...updates } as Page : p));
       return {
         ...prev,
-        pages: syncSumarioPages(updatedPages),
+        pages: syncSumarioPages(updatedPages, { ignoreIfEditingIndex: activeIdx }),
       };
     });
   };
 
-  const handleExportPDF = () => {
-    const element = document.getElementById('print-container');
-    if (!element) {
-      // Fallback to print if container not found
-      window.print();
-      return;
-    }
-
-    // Options for html2pdf
-    const opt = {
-      margin: 0,
-      filename: 'Relatorio_ABNT.pdf',
-      image: { type: 'jpeg' as const, quality: 0.98 },
-      html2canvas: { 
-        scale: 2, 
-        useCORS: true, 
-        logging: false,
-        letterRendering: true,
-        windowWidth: 794 // Force width to match A4 pixel calculation
-      },
-      jsPDF: { unit: 'mm' as const, format: 'a4' as const, orientation: 'portrait' as const }
-    };
-
-    // Temporarily show the element for capturing
-    const originalStyle = element.style.cssText;
-    element.style.display = 'block';
-    element.style.position = 'fixed';
-    element.style.top = '0';
-    element.style.left = '0';
-    element.style.zIndex = '-9999';
-    element.style.visibility = 'visible';
-
-    // Show a loading state
+  const handleExportPDF = async () => {
     setIsGeneratingPDF(true);
 
-    if (Capacitor.isNativePlatform()) {
-      // Native App logic (Capacitor/Android)
-      html2pdf().set(opt).from(element).outputPdf('datauristring').then(async (pdfDataUri: string) => {
-        try {
-          const base64Data = pdfDataUri.split(',')[1];
-          const fileName = `Relatorio_ABNT_${new Date().getTime()}.pdf`;
-          
-          await Filesystem.writeFile({
-            path: fileName,
-            data: base64Data,
-            directory: Directory.Documents
-          });
-          
-          alert('✅ PDF salvo com sucesso na sua pasta de Documentos!');
-        } catch (e: any) {
-          console.error(e);
-          alert('Erro ao salvar o PDF: ' + e.message);
-        } finally {
-          element.style.cssText = originalStyle;
-          setIsGeneratingPDF(false);
-        }
-      }).catch((err: any) => {
-        console.error('PDF Generation failed:', err);
-        element.style.cssText = originalStyle;
+    // Aguarda para o React atualizar a interface e renderizar o container no DOM
+    await new Promise((resolve) => setTimeout(resolve, 400));
+
+    try {
+      const pageElements = Array.from(document.querySelectorAll<HTMLElement>('.abnt-pdf-page'));
+      if (pageElements.length === 0) {
         setIsGeneratingPDF(false);
-      });
-    } else {
-      // Browser logic
-      html2pdf().set(opt).from(element).save().then(() => {
-        // Restore original state
-        element.style.cssText = originalStyle;
-        setIsGeneratingPDF(false);
-      }).catch((err: any) => {
-        console.error('PDF Generation failed:', err);
-        element.style.cssText = originalStyle;
-        setIsGeneratingPDF(false);
-        // Fallback to print on error
         window.print();
+        return;
+      }
+
+      const pdf = new jsPDF({
+        unit: 'mm',
+        format: 'a4',
+        orientation: 'portrait'
       });
+
+      for (let i = 0; i < pageElements.length; i++) {
+        if (i > 0) {
+          pdf.addPage('a4', 'portrait');
+        }
+        const pageEl = pageElements[i];
+        const canvas = await html2canvas(pageEl, {
+          scale: 2,
+          useCORS: true,
+          allowTaint: true,
+          logging: false,
+          width: 794,
+          height: 1123,
+          windowWidth: 794
+        });
+        const imgData = canvas.toDataURL('image/jpeg', 0.98);
+        pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
+      }
+
+      const fileName = `Relatorio_ETERJ_${new Date().getTime()}.pdf`;
+
+      if (Capacitor.isNativePlatform()) {
+        const pdfDataUri = pdf.output('datauristring');
+        const base64Data = pdfDataUri.split(',')[1];
+        
+        await Filesystem.writeFile({
+          path: fileName,
+          data: base64Data,
+          directory: Directory.Documents
+        });
+        
+        alert('✅ PDF salvo com sucesso na sua pasta de Documentos!');
+      } else {
+        pdf.save(fileName);
+      }
+    } catch (err: any) {
+      console.error('PDF Generation error:', err);
+      const fallback = window.confirm('Houve um imprevisto no download direto. Deseja abrir a janela de impressão para Salvar como PDF?');
+      if (fallback) {
+        window.print();
+      }
+    } finally {
+      setIsGeneratingPDF(false);
     }
+  };
+
+  const handlePrint = () => {
+    window.print();
   };
 
   return (
@@ -463,7 +473,7 @@ export default function App() {
           <p className="text-zinc-400 text-xs">Isso pode levar alguns segundos dependendo do tamanho.</p>
         </div>
       )}
-      <TopBar onHome={() => setView('home')} onExportPDF={handleExportPDF} />
+      <TopBar onHome={() => setView('home')} onExportPDF={handleExportPDF} onPrint={handlePrint} />
       {view === 'home' ? (
         <Home 
           onCreateManual={handleCreateManual} 
@@ -526,7 +536,14 @@ export default function App() {
           )}
         </div>
       )}
-      <PrintView docState={docState} />
+      {/* Container de Impressão e Captura de PDF */}
+      <div 
+        id="print-export-wrapper" 
+        className={isGeneratingPDF ? 'fixed top-0 left-0 z-50 pointer-events-none bg-white' : 'hidden print:block'}
+        style={{ width: '794px' }}
+      >
+        <PrintView docState={docState} />
+      </div>
     </div>
   );
 }

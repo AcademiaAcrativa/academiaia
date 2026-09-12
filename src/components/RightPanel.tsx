@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { DragEvent, Dispatch, SetStateAction, ChangeEvent } from 'react';
 import { DocumentState, PageType, Page } from '../types';
-import { Layers, Type, FilePlus2, Trash2, Image as ImageIcon } from 'lucide-react';
+import { Layers, Type, FilePlus2, Trash2, Image as ImageIcon, Edit2, Check } from 'lucide-react';
 import { syncSumarioPages } from '../utils/sumario';
 
 interface Props {
@@ -22,7 +22,7 @@ const ABNT_SECTIONS = [
       'Lista de símbolos', 'Sumário'
   ]},
   { group: 'Elementos Textuais', items: [
-      'Introdução', 'Desenvolvimento', 'Conclusão'
+      'Introdução', 'Desenvolvimento Principal', 'Conclusão'
   ]},
   { group: 'Elementos Pós-textuais', items: [
       'Referências', 'Glossário', 'Apêndice(s)', 'Anexo(s)'
@@ -31,6 +31,8 @@ const ABNT_SECTIONS = [
 
 export function RightPanel({ docState, setDocState, onAddPage, onUpdatePage, className = '', onCloseMobile }: Props) {
   const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
+  const [editingPageId, setEditingPageId] = useState<string | null>(null);
+  const [editingPageName, setEditingPageName] = useState('');
 
   const handleMovePage = (index: number, direction: 'up' | 'down') => {
     const targetIdx = direction === 'up' ? index - 1 : index + 1;
@@ -293,8 +295,67 @@ export function RightPanel({ docState, setDocState, onAddPage, onUpdatePage, cla
               } ${draggedIdx === index ? 'opacity-50' : ''}`}
             >
               <div className="flex items-center text-[13px] flex-1 min-w-0 mr-2">
-                <FilePlus2 size={15} className="mr-2.5 text-cyan-400 shrink-0" />
-                <span className="truncate select-none font-medium">{index + 1}. {page.name}</span>
+                <FilePlus2 size={15} className="mr-2 text-cyan-400 shrink-0" />
+                {editingPageId === page.id ? (
+                  <div className="flex items-center space-x-1 flex-1 min-w-0" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      autoFocus
+                      type="text"
+                      value={editingPageName}
+                      onChange={(e) => setEditingPageName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          if (editingPageName.trim()) {
+                            onUpdatePage(page.id, { name: editingPageName.trim() });
+                          }
+                          setEditingPageId(null);
+                        } else if (e.key === 'Escape') {
+                          setEditingPageId(null);
+                        }
+                      }}
+                      className="bg-[#181818] border border-cyan-500 rounded px-1.5 py-0.5 text-white text-xs w-full focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (editingPageName.trim()) {
+                          onUpdatePage(page.id, { name: editingPageName.trim() });
+                        }
+                        setEditingPageId(null);
+                      }}
+                      className="text-cyan-400 hover:text-white p-1 rounded transition-colors"
+                      title="Confirmar"
+                    >
+                      <Check size={13} />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center min-w-0 flex-1 group/title">
+                    <span 
+                      className="truncate select-none font-medium" 
+                      title="Clique duas vezes para renomear"
+                      onDoubleClick={(e) => {
+                        e.stopPropagation();
+                        setEditingPageId(page.id);
+                        setEditingPageName(page.name);
+                      }}
+                    >
+                      {index + 1}. {page.name}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingPageId(page.id);
+                        setEditingPageName(page.name);
+                      }}
+                      title="Renomear nome da página"
+                      className="ml-1.5 opacity-0 group-hover/title:opacity-100 group-hover:opacity-80 text-zinc-400 hover:text-cyan-400 p-0.5 rounded transition-opacity"
+                    >
+                      <Edit2 size={11} />
+                    </button>
+                  </div>
+                )}
               </div>
               <div className="flex items-center space-x-1 shrink-0">
                 <button

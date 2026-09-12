@@ -1,11 +1,12 @@
-import { Home, Download } from 'lucide-react';
+import { Home, Download, Printer } from 'lucide-react';
 
 interface Props {
   onHome?: () => void;
   onExportPDF?: () => void;
+  onPrint?: () => void;
 }
 
-export function TopBar({ onHome, onExportPDF }: Props) {
+export function TopBar({ onHome, onExportPDF, onPrint }: Props) {
   return (
     <div className="h-11 sm:h-10 bg-[#323232] border-b border-[#1e1e1e] flex items-center justify-between px-3 sm:px-4 text-[13px] select-none print:hidden z-30 relative">
       <div className="flex items-center space-x-3 sm:space-x-6">
@@ -39,11 +40,21 @@ export function TopBar({ onHome, onExportPDF }: Props) {
             <span className="hidden sm:inline">Início</span>
           </button>
         )}
+        {onPrint && (
+          <button 
+            onClick={onPrint}
+            className="hidden sm:flex items-center space-x-1.5 px-2.5 py-1 bg-[#262626] hover:bg-[#383838] border border-[#404040] rounded-full text-xs text-zinc-300 hover:text-white transition-colors"
+            title="Imprimir ou Salvar em PDF via Navegador"
+          >
+            <Printer size={13} />
+            <span>Imprimir</span>
+          </button>
+        )}
         {onExportPDF && (
           <button 
             onClick={onExportPDF}
             className="flex items-center space-x-1.5 px-3 py-1 bg-[#1473e6] hover:bg-[#105cba] rounded-full text-xs text-white font-medium shadow-sm transition-colors"
-            title="Baixar PDF do Relatório"
+            title="Baixar Arquivo PDF Diretamente"
           >
             <Download size={13} />
             <span>Baixar PDF</span>

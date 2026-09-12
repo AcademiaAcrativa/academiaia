@@ -3,6 +3,7 @@ import { Page } from '../types';
 export interface SumarioItem {
   title: string;
   pageNumber: number;
+  level: number;
   isSubSection?: boolean;
 }
 
@@ -40,24 +41,61 @@ export function isPreTextualPage(page: Page): boolean {
 }
 
 /**
+ * Extracts a clean, concise topic title from a line of text that starts with a section number.
+ * Removes long explanatory sentences, colons, dashes, etc.
+ * Example: "2.3.1 Vantagens: Uma de suas grandes vantagens..." -> "2.3.1 Vantagens"
+ */
+export function extractCleanSubSection(rawLine: string): { title: string; level: number } | null {
+  const trimmed = rawLine.trim();
+  // Match lines starting with numbers like "2.1", "2.3.1", "2.4.1"
+  const match = trimmed.match(/^(\d+(\.\d+)+)\s*[-–—:]?\s*(.+)$/);
+  if (!match) return null;
+
+  const num = match[1];
+  let rest = match[3].trim();
+
+  // If there is a colon (e.g. "Vantagens: Uma de suas grandes vantagens..."),
+  // only what's BEFORE the colon is the title / theme
+  if (rest.includes(':')) {
+    rest = rest.split(':')[0].trim();
+  } else if (/\s+[-–—]\s+/.test(rest)) {
+    rest = rest.split(/\s+[-–—]\s+/)[0].trim();
+  } else if (/\.\s+[A-Z0-9À-Ú]/.test(rest) && rest.length > 25) {
+    rest = rest.split(/\.\s+/)[0].trim();
+  }
+
+  // Academic section titles are concise themes
+  if (rest.length > 60) {
+    const commaSplit = rest.split(/[,;]/)[0].trim();
+    if (commaSplit.length >= 8 && commaSplit.length <= 60) {
+      rest = commaSplit;
+    } else {
+      rest = rest.slice(0, 50).trim();
+    }
+  }
+
+  const dotCount = (num.match(/\./g) || []).length;
+  const level = dotCount + 1; // 2.1 = level 2, 2.3.1 = level 3
+
+  return {
+    title: `${num} ${rest}`,
+    level
+  };
+}
+
+/**
  * Calculates page numbers and generates ABNT Sumário entries automatically based on document pages.
  */
 export function generateSumarioEntries(pages: Page[]): SumarioItem[] {
   const items: SumarioItem[] = [];
 
   // ABNT Rule:
-  // Capa is page 1 (not numbered).
-  // Folha de Rosto = page 2 (counted, unnumbered)
-  // ...
+  // Capa is page 1 (counted, unnumbered).
+  // Folha de Rosto = page 2 (counted, unnumbered)...
   // Numbering starts being displayed on the first textual element (usually Introdução).
-  //
-  // Let's calculate page index for each page in document order.
   let currentPageNum = 1;
 
   pages.forEach((page) => {
-    const pageNameLower = (page.name || '').trim().toLowerCase();
-    const headingLower = (page.type === 'texto' && page.heading ? page.heading : '').trim().toLowerCase();
-
     // Check if this page is pre-textual
     const isPreTextual = isPreTextualPage(page);
 
@@ -71,26 +109,34 @@ export function generateSumarioEntries(pages: Page[]): SumarioItem[] {
       }
 
       if (mainTitle) {
+        let mainLevel = 1;
+        const mainMatch = mainTitle.match(/^(\d+(\.\d+)*)/);
+        if (mainMatch) {
+          const dotCount = (mainMatch[1].match(/\./g) || []).length;
+          mainLevel = dotCount + 1;
+        }
+
         items.push({
           title: mainTitle,
           pageNumber: currentPageNum,
-          isSubSection: false,
+          level: mainLevel,
+          isSubSection: mainLevel > 1,
         });
       }
 
-      // Check content for sub-headings (e.g., "2.1 Fundamentação Teórica")
+      // Check content for sub-headings (e.g., "2.1 Fundamentação Teórica" or "2.3.1 Vantagens")
       if (page.type === 'texto' && page.content) {
         const lines = page.content.split('\n');
         lines.forEach((line) => {
-          const trimmed = line.trim();
-          // Regex matching numbered sub-sections like "2.1 Title" or "2.1.1 Title"
-          if (/^\d+\.\d+(\.\d+)?\s+[A-Z0-9À-Ú]/.test(trimmed)) {
+          const parsed = extractCleanSubSection(line);
+          if (parsed) {
             // Avoid adding main heading if repeated
-            if (trimmed.toUpperCase() !== mainTitle.toUpperCase()) {
+            if (parsed.title.toUpperCase() !== mainTitle.toUpperCase()) {
               items.push({
-                title: trimmed,
+                title: parsed.title,
                 pageNumber: currentPageNum,
-                isSubSection: true,
+                level: parsed.level,
+                isSubSection: parsed.level > 1,
               });
             }
           }
@@ -107,12 +153,16 @@ export function generateSumarioEntries(pages: Page[]): SumarioItem[] {
 /**
  * Automatically syncs Sumário content with all pages in document order.
  */
-export function syncSumarioPages(pages: Page[]): Page[] {
+export function syncSumarioPages(pages: Page[], options?: { force?: boolean; ignoreIfEditingIndex?: number }): Page[] {
   const sumarioPageIndex = pages.findIndex(
     (p) => (p.name || '').trim().toLowerCase() === 'sumário' || (p.name || '').trim().toLowerCase() === 'sumario'
   );
 
   if (sumarioPageIndex === -1) return pages;
+
+  if (options?.ignoreIfEditingIndex === sumarioPageIndex && !options?.force) {
+    return pages;
+  }
 
   const entries = generateSumarioEntries(pages);
   const formattedText = formatSumarioText(entries);
@@ -136,15 +186,24 @@ export function formatSumarioText(items: SumarioItem[]): string {
     return '1 INTRODUÇÃO ............................................................................................ 9\n2 DESENVOLVIMENTO ................................................................................... 10\n3 CONCLUSÃO .............................................................................................. 11\nREFERÊNCIAS ................................................................................................ 12';
   }
 
-  const DOT_LINE_LENGTH = 75;
+  const DOT_LINE_LENGTH = 72;
 
   return items
     .map((item) => {
-      const indent = item.isSubSection ? '  ' : '';
+      // Level 1: no indent. Level 2: 2 spaces. Level 3+: 4 spaces.
+      let indent = '';
+      if (item.level === 2) {
+        indent = '  ';
+      } else if (item.level >= 3) {
+        indent = '    ';
+      } else if (item.isSubSection) {
+        indent = '  ';
+      }
+
       const rawTitle = `${indent}${item.title}`;
       const pageStr = `${item.pageNumber}`;
       
-      const dotsNeeded = Math.max(5, DOT_LINE_LENGTH - rawTitle.length - pageStr.length);
+      const dotsNeeded = Math.max(4, DOT_LINE_LENGTH - rawTitle.length - pageStr.length);
       const dots = '.'.repeat(dotsNeeded);
 
       return `${rawTitle} ${dots} ${pageStr}`;

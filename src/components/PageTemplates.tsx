@@ -8,7 +8,8 @@ export function CapaEditor({ page, onUpdate, readOnly = false }: { page: CapaPag
         <img 
           src="https://res.cloudinary.com/ogrsouif/image/upload/v1788476606/eterj-escola-tecnica-do-rio-de-janeiro.png" 
           alt="Eterj Logo" 
-          className="w-[380px] h-[130px] object-contain object-left pointer-events-auto"
+          className="w-[173px] h-[130px] object-contain object-left pointer-events-auto"
+          style={{ width: '173px', height: '130px' }}
           crossOrigin="anonymous"
           referrerPolicy="no-referrer"
         />
@@ -173,7 +174,8 @@ export function TextoEditor({ page, onUpdate, readOnly = false }: { page: TextoP
         <img 
           src="https://res.cloudinary.com/ogrsouif/image/upload/v1788476606/eterj-escola-tecnica-do-rio-de-janeiro.png" 
           alt="Eterj Logo" 
-          className="w-[380px] h-[130px] object-contain object-left pointer-events-auto"
+          className="w-[173px] h-[130px] object-contain object-left pointer-events-auto"
+          style={{ width: '173px', height: '130px' }}
           crossOrigin="anonymous"
           referrerPolicy="no-referrer"
         />
