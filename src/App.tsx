@@ -11,11 +11,7 @@ import { calculateTextLines } from './utils/pageCapacity';
 import { SAMPLE_ROBOT_IMAGE, SAMPLE_CIRCUIT_IMAGE } from './assets/sampleImages';
 
 import { Layers, FilePlus, Download } from 'lucide-react';
-import { jsPDF } from 'jspdf';
-import html2canvas from 'html2canvas';
-
-import { Capacitor } from '@capacitor/core';
-import { Filesystem, Directory } from '@capacitor/filesystem';
+import { generateDirectPDF } from './utils/pdfExport';
 
 function generateId() {
   return Math.random().toString(36).substr(2, 9);
@@ -67,6 +63,7 @@ export default function App() {
   const [view, setView] = useState<'home' | 'editor'>('home');
   const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [pdfProgress, setPdfProgress] = useState<{ current: number; total: number } | null>(null);
   const [docState, setDocState] = useState<DocumentState>({
     fontFamily: 'Arial',
     pages: initialPages,
@@ -423,93 +420,22 @@ export default function App() {
 
   const handleExportPDF = async () => {
     setIsGeneratingPDF(true);
+    setPdfProgress(null);
 
     try {
       // 1. Aguarda o React renderizar o DOM com o wrapper de exportação
       await new Promise((resolve) => setTimeout(resolve, 350));
 
-      const wrapper = document.getElementById('print-export-wrapper');
-      if (wrapper) {
-        // Garante que todas as imagens no documento estejam totalmente carregadas e decodificadas
-        const imgs = Array.from(wrapper.querySelectorAll<HTMLImageElement>('img'));
-        await Promise.all(
-          imgs.map((img) => {
-            if (img.complete && img.naturalWidth > 0) return Promise.resolve();
-            return new Promise<void>((resolve) => {
-              img.onload = () => resolve();
-              img.onerror = () => resolve();
-              setTimeout(resolve, 3000);
-            });
-          })
-        );
-      }
-
-      // Pequena pausa para garantir pintura e layout estabilizados
-      await new Promise((resolve) => setTimeout(resolve, 150));
-
-      const pageElements = Array.from(document.querySelectorAll<HTMLElement>('.abnt-pdf-page'));
-      if (pageElements.length === 0) {
-        setIsGeneratingPDF(false);
-        window.print();
-        return;
-      }
-
-      const pdf = new jsPDF({
-        unit: 'mm',
-        format: 'a4',
-        orientation: 'portrait'
+      const fileName = `Relatorio_ETERJ_${new Date().toISOString().slice(0, 10)}.pdf`;
+      await generateDirectPDF('print-export-wrapper', fileName, (current, total) => {
+        setPdfProgress({ current, total });
       });
-
-      for (let i = 0; i < pageElements.length; i++) {
-        if (i > 0) {
-          pdf.addPage('a4', 'portrait');
-        }
-        const pageEl = pageElements[i];
-        const canvas = await html2canvas(pageEl, {
-          scale: 2,
-          useCORS: true,
-          allowTaint: false,
-          logging: false,
-          width: 794,
-          height: 1123,
-          windowWidth: 794,
-          backgroundColor: '#ffffff',
-          imageTimeout: 15000,
-          scrollX: 0,
-          scrollY: 0,
-        });
-        const imgData = canvas.toDataURL('image/jpeg', 0.98);
-        pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
-      }
-
-      const fileName = `Relatorio_ETERJ_${new Date().getTime()}.pdf`;
-
-      if (Capacitor.isNativePlatform()) {
-        const pdfDataUri = pdf.output('datauristring');
-        const base64Data = pdfDataUri.split(',')[1];
-        
-        await Filesystem.writeFile({
-          path: fileName,
-          data: base64Data,
-          directory: Directory.Documents
-        });
-        
-        alert('✅ PDF salvo com sucesso na sua pasta de Documentos!');
-      } else {
-        pdf.save(fileName);
-      }
     } catch (err: any) {
       console.error('PDF Generation error:', err);
-      // Remove o modal de carregamento imediatamente para não aparecer na impressão nem travar a tela
-      setIsGeneratingPDF(false);
-      await new Promise((resolve) => setTimeout(resolve, 200));
-
-      const fallback = window.confirm('Houve um imprevisto no download direto. Deseja abrir a janela de impressão para Salvar como PDF?');
-      if (fallback) {
-        window.print();
-      }
+      alert('Não foi possível gerar o arquivo diretamente: ' + (err?.message || 'Erro ao processar as páginas.'));
     } finally {
       setIsGeneratingPDF(false);
+      setPdfProgress(null);
     }
   };
 
@@ -527,10 +453,15 @@ export default function App() {
   return (
     <div className="flex flex-col h-screen bg-[#262626] text-zinc-300 font-sans overflow-hidden">
       {isGeneratingPDF && (
-        <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center space-y-4 print:hidden pointer-events-none select-none">
+        <div 
+          data-html2canvas-ignore="true"
+          className="fixed inset-0 z-[100] bg-black/75 backdrop-blur-sm flex flex-col items-center justify-center space-y-4 print:hidden pointer-events-none select-none"
+        >
           <div className="w-12 h-12 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin print:hidden"></div>
-          <p className="text-white font-medium animate-pulse print:hidden">Gerando seu PDF ABNT...</p>
-          <p className="text-zinc-400 text-xs print:hidden">Isso pode levar alguns segundos dependendo do tamanho.</p>
+          <p className="text-white font-medium text-base animate-pulse print:hidden">
+            {pdfProgress ? `Processando página ${pdfProgress.current} de ${pdfProgress.total}...` : 'Gerando seu PDF ABNT...'}
+          </p>
+          <p className="text-zinc-400 text-xs print:hidden">Isso garante alta nitidez e fidelidade às normas ABNT.</p>
         </div>
       )}
       <div className="print:hidden">
@@ -603,7 +534,7 @@ export default function App() {
       {/* Container de Impressão e Captura de PDF */}
       <div 
         id="print-export-wrapper" 
-        className={isGeneratingPDF ? 'fixed top-0 left-0 z-40 bg-white pointer-events-none' : 'hidden print:block'}
+        className={isGeneratingPDF ? 'absolute top-0 left-0 z-0 bg-white pointer-events-none' : 'hidden print:block'}
         style={{ width: '794px', minWidth: '794px' }}
       >
         <PrintView docState={docState} />
