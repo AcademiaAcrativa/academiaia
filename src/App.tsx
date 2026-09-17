@@ -8,6 +8,7 @@ import { Home } from './components/Home';
 import { DocumentState, Page, PageType } from './types';
 import { syncSumarioPages } from './utils/sumario';
 import { calculateTextLines } from './utils/pageCapacity';
+import { SAMPLE_ROBOT_IMAGE, SAMPLE_CIRCUIT_IMAGE } from './assets/sampleImages';
 
 import { Layers, FilePlus, Download } from 'lucide-react';
 import { jsPDF } from 'jspdf';
@@ -209,7 +210,7 @@ export default function App() {
           images: [
             {
               id: 'img-robot-1',
-              src: 'https://res.cloudinary.com/ogrsouif/image/upload/v1787919498/images__3_-removebg-preview.png',
+              src: SAMPLE_ROBOT_IMAGE,
               x: 180,
               y: 350,
               width: 320,
@@ -226,7 +227,7 @@ export default function App() {
           images: [
             {
               id: 'img-circuit-1',
-              src: 'https://res.cloudinary.com/ogrsouif/image/upload/v1787919563/images_3.jpg',
+              src: SAMPLE_CIRCUIT_IMAGE,
               x: 150,
               y: 520,
               width: 360,
@@ -423,10 +424,29 @@ export default function App() {
   const handleExportPDF = async () => {
     setIsGeneratingPDF(true);
 
-    // Aguarda para o React atualizar a interface e renderizar o container no DOM
-    await new Promise((resolve) => setTimeout(resolve, 400));
-
     try {
+      // 1. Aguarda o React renderizar o DOM com o wrapper de exportação
+      await new Promise((resolve) => setTimeout(resolve, 350));
+
+      const wrapper = document.getElementById('print-export-wrapper');
+      if (wrapper) {
+        // Garante que todas as imagens no documento estejam totalmente carregadas e decodificadas
+        const imgs = Array.from(wrapper.querySelectorAll<HTMLImageElement>('img'));
+        await Promise.all(
+          imgs.map((img) => {
+            if (img.complete && img.naturalWidth > 0) return Promise.resolve();
+            return new Promise<void>((resolve) => {
+              img.onload = () => resolve();
+              img.onerror = () => resolve();
+              setTimeout(resolve, 3000);
+            });
+          })
+        );
+      }
+
+      // Pequena pausa para garantir pintura e layout estabilizados
+      await new Promise((resolve) => setTimeout(resolve, 150));
+
       const pageElements = Array.from(document.querySelectorAll<HTMLElement>('.abnt-pdf-page'));
       if (pageElements.length === 0) {
         setIsGeneratingPDF(false);
@@ -448,11 +468,15 @@ export default function App() {
         const canvas = await html2canvas(pageEl, {
           scale: 2,
           useCORS: true,
-          allowTaint: true,
+          allowTaint: false,
           logging: false,
           width: 794,
           height: 1123,
-          windowWidth: 794
+          windowWidth: 794,
+          backgroundColor: '#ffffff',
+          imageTimeout: 15000,
+          scrollX: 0,
+          scrollY: 0,
         });
         const imgData = canvas.toDataURL('image/jpeg', 0.98);
         pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
@@ -476,6 +500,10 @@ export default function App() {
       }
     } catch (err: any) {
       console.error('PDF Generation error:', err);
+      // Remove o modal de carregamento imediatamente para não aparecer na impressão nem travar a tela
+      setIsGeneratingPDF(false);
+      await new Promise((resolve) => setTimeout(resolve, 200));
+
       const fallback = window.confirm('Houve um imprevisto no download direto. Deseja abrir a janela de impressão para Salvar como PDF?');
       if (fallback) {
         window.print();
@@ -499,20 +527,24 @@ export default function App() {
   return (
     <div className="flex flex-col h-screen bg-[#262626] text-zinc-300 font-sans overflow-hidden">
       {isGeneratingPDF && (
-        <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center space-y-4">
-          <div className="w-12 h-12 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-white font-medium animate-pulse">Gerando seu PDF ABNT...</p>
-          <p className="text-zinc-400 text-xs">Isso pode levar alguns segundos dependendo do tamanho.</p>
+        <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center space-y-4 print:hidden pointer-events-none select-none">
+          <div className="w-12 h-12 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin print:hidden"></div>
+          <p className="text-white font-medium animate-pulse print:hidden">Gerando seu PDF ABNT...</p>
+          <p className="text-zinc-400 text-xs print:hidden">Isso pode levar alguns segundos dependendo do tamanho.</p>
         </div>
       )}
-      <TopBar onHome={() => setView('home')} onExportPDF={handleExportPDF} onPrint={handlePrint} />
+      <div className="print:hidden">
+        <TopBar onHome={() => setView('home')} onExportPDF={handleExportPDF} onPrint={handlePrint} />
+      </div>
       {view === 'home' ? (
-        <Home 
-          onCreateManual={handleCreateManual} 
-          onCreatePreMounted={handleCreatePreMounted}
-        />
+        <div className="print:hidden flex-1 overflow-auto">
+          <Home 
+            onCreateManual={handleCreateManual} 
+            onCreatePreMounted={handleCreatePreMounted}
+          />
+        </div>
       ) : (
-        <div className="flex flex-1 overflow-hidden relative">
+        <div className="print:hidden flex flex-1 overflow-hidden relative">
           <Toolbar onAddPage={() => addPage('Nova Página', 'texto')} onExportPDF={handleExportPDF} />
           
           <div className="flex-1 flex flex-col h-full overflow-hidden relative">
@@ -571,8 +603,8 @@ export default function App() {
       {/* Container de Impressão e Captura de PDF */}
       <div 
         id="print-export-wrapper" 
-        className={isGeneratingPDF ? 'fixed top-0 left-0 z-50 pointer-events-none bg-white' : 'hidden print:block'}
-        style={{ width: '794px' }}
+        className={isGeneratingPDF ? 'fixed top-0 left-0 z-40 bg-white pointer-events-none' : 'hidden print:block'}
+        style={{ width: '794px', minWidth: '794px' }}
       >
         <PrintView docState={docState} />
       </div>

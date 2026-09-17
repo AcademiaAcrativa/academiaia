@@ -110,7 +110,13 @@ function DraggableImage({
       }}
       onPointerDown={handleDragStart}
     >
-      <img src={image.src} alt="simbolo" className="w-full h-full object-contain pointer-events-none" referrerPolicy="no-referrer" />
+      <img 
+        src={image.src} 
+        alt="simbolo" 
+        className="w-full h-full object-contain pointer-events-none" 
+        crossOrigin="anonymous"
+        referrerPolicy="no-referrer" 
+      />
       
       {selected && (
         <>

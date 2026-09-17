@@ -1,6 +1,7 @@
 import { DocumentState, CapaPage, RostoPage, TextoPage } from '../types';
 import { isPreTextualPage, isSumarioPage } from '../utils/sumario';
 import { SumarioPrintView } from './SumarioRenderer';
+import { ETERJ_LOGO_BASE64 } from '../assets/eterjLogo';
 
 function CapaPrint({ page }: { page: CapaPage }) {
   return (
@@ -8,12 +9,10 @@ function CapaPrint({ page }: { page: CapaPage }) {
       {/* Logo Eterj */}
       <div className="absolute -top-[113px] left-0 right-0 flex justify-start pointer-events-none">
         <img 
-          src="https://res.cloudinary.com/ogrsouif/image/upload/v1788476606/eterj-escola-tecnica-do-rio-de-janeiro.png" 
+          src={ETERJ_LOGO_BASE64} 
           alt="Eterj Logo" 
           className="w-[173px] h-[130px] object-contain object-left pointer-events-auto"
           style={{ width: '173px', height: '130px' }}
-          crossOrigin="anonymous"
-          referrerPolicy="no-referrer"
         />
       </div>
 
@@ -107,12 +106,10 @@ function TextoPrint({ page }: { page: TextoPage }) {
       {/* Logo Eterj */}
       <div className="absolute -top-[113px] left-0 right-0 flex justify-start pointer-events-none">
         <img 
-          src="https://res.cloudinary.com/ogrsouif/image/upload/v1788476606/eterj-escola-tecnica-do-rio-de-janeiro.png" 
+          src={ETERJ_LOGO_BASE64} 
           alt="Eterj Logo" 
           className="w-[173px] h-[130px] object-contain object-left pointer-events-auto"
           style={{ width: '173px', height: '130px' }}
-          crossOrigin="anonymous"
-          referrerPolicy="no-referrer"
         />
       </div>
 
