@@ -7,6 +7,16 @@ export interface SumarioItem {
   isSubSection?: boolean;
 }
 
+export interface ParsedSumarioLine {
+  id: string;
+  raw: string;
+  isEntry: boolean;
+  title: string;
+  pageNumber: string;
+  level: number;
+  isPrimary: boolean;
+}
+
 export const PRE_TEXTUAL_NAMES = [
   'capa',
   'folha de rosto',
@@ -40,10 +50,21 @@ export function isPreTextualPage(page: Page): boolean {
   );
 }
 
+export function isSumarioPage(page?: { name?: string; heading?: string; type?: string }): boolean {
+  if (!page) return false;
+  const pageNameLower = (page.name || '').trim().toLowerCase();
+  const headingLower = (page.heading || '').trim().toLowerCase();
+  return (
+    pageNameLower === 'sumário' ||
+    pageNameLower === 'sumario' ||
+    headingLower === 'sumário' ||
+    headingLower === 'sumario'
+  );
+}
+
 /**
- * Extracts a clean, concise topic title from a line of text that starts with a section number.
- * Removes long explanatory sentences, colons, dashes, etc.
- * Example: "2.3.1 Vantagens: Uma de suas grandes vantagens..." -> "2.3.1 Vantagens"
+ * Extracts a clean topic title from a line of text that starts with a section number.
+ * Preserves the full section title without cutting or truncating words.
  */
 export function extractCleanSubSection(rawLine: string): { title: string; level: number } | null {
   const trimmed = rawLine.trim();
@@ -54,25 +75,17 @@ export function extractCleanSubSection(rawLine: string): { title: string; level:
   const num = match[1];
   let rest = match[3].trim();
 
-  // If there is a colon (e.g. "Vantagens: Uma de suas grandes vantagens..."),
-  // only what's BEFORE the colon is the title / theme
-  if (rest.includes(':')) {
-    rest = rest.split(':')[0].trim();
-  } else if (/\s+[-–—]\s+/.test(rest)) {
-    rest = rest.split(/\s+[-–—]\s+/)[0].trim();
-  } else if (/\.\s+[A-Z0-9À-Ú]/.test(rest) && rest.length > 25) {
+  // If a line is an inline paragraph (e.g. "2.1 Vantagens. Esta pesquisa aborda..."),
+  // only separate the title if there is an explicit sentence terminator (. followed by space and another sentence)
+  // and the line is long.
+  if (rest.length > 90 && /\.\s+[A-ZÀ-Ú]/.test(rest)) {
     rest = rest.split(/\.\s+/)[0].trim();
   }
 
-  // Academic section titles are concise themes
-  if (rest.length > 60) {
-    const commaSplit = rest.split(/[,;]/)[0].trim();
-    if (commaSplit.length >= 8 && commaSplit.length <= 60) {
-      rest = commaSplit;
-    } else {
-      rest = rest.slice(0, 50).trim();
-    }
-  }
+  // Remove any trailing dots or dashes from manual typing
+  rest = rest.replace(/[\.\s\-_–—]+$/, '').trim();
+
+  if (!rest) return null;
 
   const dotCount = (num.match(/\./g) || []).length;
   const level = dotCount + 1; // 2.1 = level 2, 2.3.1 = level 3
@@ -210,3 +223,104 @@ export function formatSumarioText(items: SumarioItem[]): string {
     })
     .join('\n');
 }
+
+/**
+ * Parses raw text from a Sumário page into structured items for pixel-perfect ABNT rendering.
+ * Supports any spacing or dots format.
+ */
+export function parseSumarioContent(content: string): ParsedSumarioLine[] {
+  if (!content) return [];
+  const lines = content.split('\n');
+
+  return lines.map((line, idx) => {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      return {
+        id: `sum-line-${idx}`,
+        raw: '',
+        isEntry: false,
+        title: '',
+        pageNumber: '',
+        level: 1,
+        isPrimary: false,
+      };
+    }
+
+    // Match section line ending with a page number
+    // Extracts the page number at the end and safely removes the dot leader
+    const pageNumMatch = line.match(/[\.\s\-_–—]+(\d+)\s*$/);
+    if (pageNumMatch) {
+      const pageNumber = pageNumMatch[1];
+      const beforePage = line.slice(0, line.length - pageNumMatch[0].length);
+      const titleWithIndent = beforePage.replace(/[\.\s\-_–—]+$/, '');
+      const indentMatch = titleWithIndent.match(/^(\s*)/);
+      const indent = indentMatch ? indentMatch[1] : '';
+      const title = titleWithIndent.trim();
+
+      if (title) {
+        // Determine level:
+        let level = 1;
+        const leadingSpaces = indent.length;
+        if (leadingSpaces >= 4) {
+          level = 3;
+        } else if (leadingSpaces >= 2) {
+          level = 2;
+        } else {
+          const numMatch = title.match(/^(\d+(\.\d+)+)/);
+          if (numMatch) {
+            const dots = (numMatch[1].match(/\./g) || []).length;
+            level = dots + 1;
+          }
+        }
+
+        // In ABNT, primary elements (Level 1) are bold uppercase
+        const isPrimary = level === 1 && (
+          /^\d+\s+[A-ZÀ-Ú]/.test(title) ||
+          !/^\d/.test(title)
+        );
+
+        return {
+          id: `sum-line-${idx}`,
+          raw: line,
+          isEntry: true,
+          title,
+          pageNumber,
+          level,
+          isPrimary,
+        };
+      }
+    }
+
+    // Line with text but no ending page number (e.g. standalone heading or note)
+    return {
+      id: `sum-line-${idx}`,
+      raw: line,
+      isEntry: false,
+      title: trimmed,
+      pageNumber: '',
+      level: 1,
+      isPrimary: true,
+    };
+  });
+}
+
+/**
+ * Rebuilds plain text content from parsed lines when user updates in structured editor.
+ */
+export function rebuildSumarioContent(lines: ParsedSumarioLine[]): string {
+  const DOT_LINE_LENGTH = 70;
+  return lines
+    .map((line) => {
+      if (!line.isEntry) {
+        return line.title || line.raw || '';
+      }
+      const indent = line.level === 2 ? '  ' : line.level >= 3 ? '    ' : '';
+      const rawTitle = `${indent}${line.title}`;
+      const pageStr = `${line.pageNumber}`;
+      const dotsNeeded = Math.max(4, DOT_LINE_LENGTH - rawTitle.length - pageStr.length);
+      const dots = '.'.repeat(dotsNeeded);
+      return `${rawTitle} ${dots} ${pageStr}`;
+    })
+    .join('\n');
+}
+

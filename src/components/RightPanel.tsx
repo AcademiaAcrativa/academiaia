@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import type { DragEvent, Dispatch, SetStateAction, ChangeEvent } from 'react';
-import { DocumentState, PageType, Page } from '../types';
-import { Layers, Type, FilePlus2, Trash2, Image as ImageIcon, Edit2, Check } from 'lucide-react';
+import { DocumentState, PageType, Page, TextoPage } from '../types';
+import { Layers, Type, FilePlus2, Trash2, Image as ImageIcon, Edit2, Check, RefreshCw, BookOpen, Plus, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { syncSumarioPages } from '../utils/sumario';
+import { analyzePageCapacity, willSubDevelopmentFit, getNextDevelopmentNumber } from '../utils/pageCapacity';
 
 interface Props {
   docState: DocumentState;
@@ -133,17 +134,141 @@ export function RightPanel({ docState, setDocState, onAddPage, onUpdatePage, cla
 
   const [customPageName, setCustomPageName] = useState('');
 
+  // Development & Subsections Management
+  const [devNumber, setDevNumber] = useState('');
+  const [devTitle, setDevTitle] = useState('');
+  const [devContent, setDevContent] = useState('');
+
+  const activePage = docState.pages.find(p => p.id === docState.activePageId);
+  const isDevActive = activePage && activePage.type === 'texto' && (
+    activePage.name.toLowerCase().includes('desenvolvimento') ||
+    activePage.heading?.startsWith('2') ||
+    activePage.name.startsWith('2')
+  );
+
+  const targetDevPage = (isDevActive ? activePage : docState.pages.filter(p => 
+    p.type === 'texto' && (
+      p.name.toLowerCase().includes('desenvolvimento') ||
+      p.heading?.startsWith('2') ||
+      p.name.startsWith('2')
+    )
+  ).slice(-1)[0]) || (activePage?.type === 'texto' ? activePage : undefined);
+
+  const suggestedNumber = getNextDevelopmentNumber(docState.pages);
+  const effectiveNumber = devNumber.trim() || suggestedNumber;
+
+  const targetCapacity = targetDevPage ? analyzePageCapacity(targetDevPage) : null;
+  const fitAnalysis = targetDevPage 
+    ? willSubDevelopmentFit(targetDevPage, {
+        number: effectiveNumber,
+        title: devTitle,
+        content: devContent
+      })
+    : null;
+
+  const handleInsertDevelopment = () => {
+    if (!devTitle.trim() && !devContent.trim()) return;
+
+    const num = effectiveNumber;
+    const title = devTitle.trim();
+    const content = devContent.trim();
+    const header = `${num} ${title ? title.toUpperCase() : ''}`.trim();
+
+    // Check if it fits on the current development sheet
+    if (fitAnalysis?.fitsOnCurrentPage && targetDevPage && targetDevPage.type === 'texto') {
+      // Append to the SAME sheet (mesma folha)
+      const currentContent = (targetDevPage as TextoPage).content || '';
+      const prefix = currentContent.trim() ? '\n\n' : '';
+      const blockText = header ? `${header}${content ? '\n' + content : ''}` : content;
+      const newContent = currentContent + prefix + blockText;
+
+      const updatedPages = docState.pages.map(p => 
+        p.id === targetDevPage.id ? { ...p, content: newContent } : p
+      );
+      const synced = syncSumarioPages(updatedPages);
+      setDocState({
+        ...docState,
+        pages: synced,
+        activePageId: targetDevPage.id
+      });
+    } else {
+      // Goes to a NEW sheet (outra folha) because space was exceeded or no dev page existed
+      const newId = Math.random().toString(36).substring(2, 9);
+      const newPage: TextoPage = {
+        id: newId,
+        type: 'texto',
+        name: `${num} ${title || 'Desenvolvimento'}`,
+        heading: header || `${num} DESENVOLVIMENTO`,
+        content: content
+      };
+
+      let insertIdx = docState.pages.length;
+      if (targetDevPage) {
+        const idx = docState.pages.findIndex(p => p.id === targetDevPage.id);
+        if (idx !== -1) insertIdx = idx + 1;
+      }
+
+      const updatedPages = [...docState.pages];
+      updatedPages.splice(insertIdx, 0, newPage);
+      const synced = syncSumarioPages(updatedPages);
+      setDocState({
+        ...docState,
+        pages: synced,
+        activePageId: newId
+      });
+    }
+
+    // Reset inputs
+    setDevTitle('');
+    setDevContent('');
+    setDevNumber('');
+  };
+
+  const handleForceNewDevPage = () => {
+    const num = effectiveNumber;
+    const title = devTitle.trim();
+    const content = devContent.trim();
+    const newId = Math.random().toString(36).substring(2, 9);
+    const header = `${num} ${title ? title.toUpperCase() : ''}`.trim();
+    const newPage: TextoPage = {
+      id: newId,
+      type: 'texto',
+      name: `${num} ${title || 'Desenvolvimento'}`,
+      heading: header || `${num} DESENVOLVIMENTO`,
+      content: content
+    };
+
+    let insertIdx = docState.pages.length;
+    if (targetDevPage) {
+      const idx = docState.pages.findIndex(p => p.id === targetDevPage.id);
+      if (idx !== -1) insertIdx = idx + 1;
+    }
+
+    const updatedPages = [...docState.pages];
+    updatedPages.splice(insertIdx, 0, newPage);
+    const synced = syncSumarioPages(updatedPages);
+    setDocState({
+      ...docState,
+      pages: synced,
+      activePageId: newId
+    });
+
+    setDevTitle('');
+    setDevContent('');
+    setDevNumber('');
+  };
+
   const handleAddCustomPage = () => {
     if (customPageName.trim()) {
-      const activePage = docState.pages.find(p => p.id === docState.activePageId);
+      const activeP = docState.pages.find(p => p.id === docState.activePageId);
       
-      if (activePage && activePage.type === 'texto') {
+      if (activeP && activeP.type === 'texto') {
         // Appends to the active text page to keep it in the same layer as normal for subtitles
-        const currentContent = activePage.content || '';
+        const currentContent = activeP.content || '';
         const prefix = currentContent.trim() ? '\n\n' : '';
         const subtitleText = customPageName.trim().toUpperCase();
         
-        onUpdatePage(activePage.id, { 
+        onUpdatePage(activeP.id, { 
           content: currentContent + prefix + subtitleText + '\n\n'
         });
       } else {
@@ -227,14 +352,140 @@ export function RightPanel({ docState, setDocState, onAddPage, onUpdatePage, cla
           </div>
         </div>
 
+      {/* Desenvolvimento & Subtópicos Panel */}
+      <div className="flex-none flex flex-col border-b border-[#1e1e1e]">
+        <div className="h-8 bg-[#2e2e2e] flex items-center justify-between px-3 text-[11px] font-semibold uppercase tracking-wider text-zinc-300">
+          <div className="flex items-center">
+            <BookOpen size={14} className="mr-2 text-cyan-400" />
+            <span>Desenvolvimento (2.x)</span>
+          </div>
+          <span className="text-[10px] px-1.5 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800 font-mono font-bold">
+            {effectiveNumber}
+          </span>
+        </div>
+
+        <div className="p-3 space-y-2.5">
+          {/* Status da Folha Atual */}
+          {targetCapacity && (
+            <div className="bg-[#242424] border border-[#383838] rounded-md p-2 space-y-1.5">
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="text-zinc-400 font-medium truncate max-w-[150px]">
+                  {targetDevPage?.name || 'Folha de Desenvolvimento'}
+                </span>
+                <span className={targetCapacity.linesRemaining <= 3 ? "text-amber-400 font-bold" : "text-emerald-400 font-semibold"}>
+                  {targetCapacity.linesUsed}/{targetCapacity.maxLines} linhas
+                </span>
+              </div>
+              
+              {/* Progress bar */}
+              <div className="w-full bg-[#181818] h-1.5 rounded-full overflow-hidden">
+                <div 
+                  className={`h-full transition-all duration-300 ${
+                    targetCapacity.linesRemaining <= 3 
+                      ? 'bg-amber-500' 
+                      : targetCapacity.percentageUsed > 70 
+                        ? 'bg-yellow-500' 
+                        : 'bg-emerald-500'
+                  }`}
+                  style={{ width: `${targetCapacity.percentageUsed}%` }}
+                />
+              </div>
+
+              <div className="flex items-center justify-between text-[10px] text-zinc-400">
+                <span>Espaço disponível:</span>
+                <span className="font-semibold text-zinc-300">{targetCapacity.linesRemaining} linhas livres</span>
+              </div>
+            </div>
+          )}
+
+          {/* Form inputs */}
+          <div className="space-y-1.5">
+            <div className="flex items-center space-x-1.5">
+              <input
+                type="text"
+                value={devNumber}
+                onChange={e => setDevNumber(e.target.value)}
+                placeholder={suggestedNumber}
+                title="Número do subtópico (ex: 2.1, 2.2, 2.3)"
+                className="w-16 bg-[#1e1e1e] border border-[#404040] rounded px-2 py-1.5 text-zinc-200 focus:outline-none focus:border-cyan-500/50 text-[11px] font-mono font-bold text-center"
+              />
+              <input
+                type="text"
+                value={devTitle}
+                onChange={e => setDevTitle(e.target.value)}
+                placeholder="Título (ex: Objetivo do Projeto)"
+                className="flex-1 bg-[#1e1e1e] border border-[#404040] rounded px-2 py-1.5 text-zinc-200 focus:outline-none focus:border-cyan-500/50 text-[11px]"
+              />
+            </div>
+
+            <textarea
+              value={devContent}
+              onChange={e => setDevContent(e.target.value)}
+              rows={3}
+              placeholder="Conteúdo do subtópico (opcional)..."
+              className="w-full bg-[#1e1e1e] border border-[#404040] rounded px-2 py-1.5 text-zinc-200 focus:outline-none focus:border-cyan-500/50 text-[11px] resize-y placeholder:text-zinc-500"
+            />
+          </div>
+
+          {/* Cálculo e Análise se vai caber */}
+          {fitAnalysis && (
+            <div className={`p-2 rounded border text-[11px] space-y-1 transition-all ${
+              fitAnalysis.fitsOnCurrentPage
+                ? 'bg-emerald-950/30 border-emerald-800/60 text-emerald-200'
+                : 'bg-amber-950/30 border-amber-800/60 text-amber-200'
+            }`}>
+              <div className="flex items-center space-x-1.5 font-bold">
+                {fitAnalysis.fitsOnCurrentPage ? (
+                  <>
+                    <CheckCircle2 size={13} className="text-emerald-400 shrink-0" />
+                    <span>Cabe na folha atual (mesma folha)</span>
+                  </>
+                ) : (
+                  <>
+                    <AlertCircle size={13} className="text-amber-400 shrink-0" />
+                    <span>Irá para outra folha (sem espaço)</span>
+                  </>
+                )}
+              </div>
+              <p className="text-[10px] opacity-90 leading-tight">
+                {fitAnalysis.fitsOnCurrentPage 
+                  ? `Ocupará ~${fitAnalysis.linesNeeded} linhas. A folha atual tem ${fitAnalysis.linesRemainingBefore} livres (restarão ~${fitAnalysis.linesRemainingAfter} linhas).`
+                  : `Ocupará ~${fitAnalysis.linesNeeded} linhas, mas a folha atual tem apenas ${fitAnalysis.linesRemainingBefore} livres. Uma nova folha será gerada automaticamente.`
+                }
+              </p>
+            </div>
+          )}
+
+          {/* Botões de Ação */}
+          <div className="flex flex-col space-y-1.5">
+            <button
+              onClick={handleInsertDevelopment}
+              disabled={!devTitle.trim() && !devContent.trim()}
+              className="w-full py-1.5 px-3 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white rounded text-xs font-bold transition-colors flex items-center justify-center space-x-1 shadow-sm cursor-pointer"
+            >
+              <Plus size={14} />
+              <span>Inserir {effectiveNumber}</span>
+            </button>
+            <button
+              onClick={handleForceNewDevPage}
+              disabled={!devTitle.trim() && !devContent.trim()}
+              title="Cria uma nova folha de desenvolvimento separada em sequência"
+              className="w-full py-1 bg-[#262626] hover:bg-[#333] border border-[#404040] disabled:opacity-40 text-zinc-300 hover:text-white rounded text-[11px] font-medium transition-colors cursor-pointer"
+            >
+              Forçar Nova Folha Separada
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* Upload Image & Subtitle Panel */}
       <div className="flex-none flex flex-col border-b border-[#1e1e1e]">
         <div className="h-8 bg-[#2e2e2e] flex items-center px-3 text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
           <ImageIcon size={14} className="mr-2" />
-          Inserções
+          Inserções Adicionais
         </div>
         <div className="p-3 grid grid-cols-2 gap-3">
-          {/* Adicionar Subtítulo */}
+          {/* Adicionar Subtítulo Livre */}
           <div className="flex flex-col">
             <p className="text-[10px] text-zinc-400 mb-1.5 uppercase font-medium">Novo Subtítulo</p>
             <input 
@@ -248,7 +499,7 @@ export function RightPanel({ docState, setDocState, onAddPage, onUpdatePage, cla
             <button 
               onClick={handleAddCustomPage}
               disabled={!customPageName.trim()}
-              className="w-full py-1.5 bg-[#404040] hover:bg-[#505050] disabled:opacity-50 text-white rounded text-xs font-bold transition-colors"
+              className="w-full py-1.5 bg-[#404040] hover:bg-[#505050] disabled:opacity-50 text-white rounded text-xs font-bold transition-colors cursor-pointer"
             >
               Criar
             </button>
@@ -273,9 +524,25 @@ export function RightPanel({ docState, setDocState, onAddPage, onUpdatePage, cla
 
       {/* Layers Panel */}
       <div className="flex-none flex flex-col">
-        <div className="flex-none h-8 bg-[#2e2e2e] flex items-center px-3 text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
-          <Layers size={14} className="mr-2" />
-          Camadas (Folhas)
+        <div className="flex-none h-8 bg-[#2e2e2e] flex items-center justify-between px-3 text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
+          <div className="flex items-center">
+            <Layers size={14} className="mr-2" />
+            <span>Camadas (Folhas)</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setDocState((prev) => ({
+                ...prev,
+                pages: syncSumarioPages(prev.pages, { force: true }),
+              }));
+            }}
+            className="flex items-center space-x-1 text-[10px] text-cyan-400 hover:text-cyan-300 transition-colors normal-case font-medium cursor-pointer"
+            title="Recalcular e sincronizar pontinhos e páginas do Sumário"
+          >
+            <RefreshCw size={11} />
+            <span>Sincronizar Sumário</span>
+          </button>
         </div>
         <div className="p-2 space-y-1.5 bg-[#262626] pb-6">
           {docState.pages.map((page, index) => (

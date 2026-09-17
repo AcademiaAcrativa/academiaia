@@ -20,6 +20,7 @@ import {
   Plus
 } from 'lucide-react';
 import { DevBlock, PreMountedData } from '../App';
+import { calculateTextLines } from '../utils/pageCapacity';
 
 interface Props {
   onCreateManual: () => void;
@@ -503,6 +504,35 @@ Gere os seguintes textos separados, mantendo linguagem formal, acadêmica e impe
                           <span>Adicionar 2.{devBlocks.length}</span>
                         </button>
                       </div>
+
+                      {/* Análise de Linhas e Folhas em tempo real */}
+                      {(() => {
+                        const totalEstLines = devBlocks.reduce((acc, b) => {
+                          const hLines = b.title.trim() ? 2 : 0;
+                          const cLines = calculateTextLines(b.content);
+                          return acc + hLines + cLines;
+                        }, 0);
+                        const fitsSingle = totalEstLines <= 36;
+                        const estimatedPages = Math.max(1, Math.ceil(totalEstLines / 36));
+
+                        return (
+                          <div className={`p-2.5 rounded-lg border text-xs flex items-center justify-between ${
+                            fitsSingle
+                              ? 'bg-emerald-950/20 border-emerald-800/40 text-emerald-300'
+                              : 'bg-cyan-950/20 border-cyan-800/40 text-cyan-300'
+                          }`}>
+                            <div className="flex items-center space-x-2">
+                              <span className="font-semibold">Cálculo de Espaço ABNT:</span>
+                              <span className="text-zinc-300">~{totalEstLines} linhas calculadas</span>
+                            </div>
+                            <span className="text-[11px] px-2 py-0.5 rounded font-medium bg-black/30 border border-white/10">
+                              {fitsSingle 
+                                ? '✓ Caberá na mesma folha' 
+                                : `↳ Distribuído em ~${estimatedPages} folhas em sequência`}
+                            </span>
+                          </div>
+                        );
+                      })()}
 
                       <div className="space-y-3 pt-1">
                         {devBlocks.map((block, idx) => {

@@ -1,5 +1,8 @@
 import { useRef, useEffect } from 'react';
 import { CapaPage, RostoPage, TextoPage } from '../types';
+import { isSumarioPage } from '../utils/sumario';
+import { analyzePageCapacity } from '../utils/pageCapacity';
+import { SumarioEditorView } from './SumarioRenderer';
 
 export function CapaEditor({ page, onUpdate, readOnly = false }: { page: CapaPage, onUpdate: (u: Partial<CapaPage>) => void, readOnly?: boolean }) {
   return (
@@ -140,14 +143,25 @@ export function RostoEditor({ page, onUpdate, readOnly = false }: { page: RostoP
   );
 }
 
-export function TextoEditor({ page, onUpdate, readOnly = false }: { page: TextoPage, onUpdate: (u: Partial<TextoPage>) => void, readOnly?: boolean }) {
+export function TextoEditor({ 
+  page, 
+  onUpdate, 
+  readOnly = false,
+  onSyncSumario
+}: { 
+  page: TextoPage; 
+  onUpdate: (u: Partial<TextoPage>) => void; 
+  readOnly?: boolean;
+  onSyncSumario?: () => void;
+}) {
   const contentRef = useRef<HTMLDivElement>(null);
+  const isSumario = isSumarioPage(page);
 
   useEffect(() => {
-    if (contentRef.current && contentRef.current.innerText !== page.content) {
+    if (!isSumario && contentRef.current && contentRef.current.innerText !== page.content) {
       contentRef.current.innerText = page.content;
     }
-  }, [page.content]);
+  }, [page.content, isSumario]);
 
   const handleBlur = () => {
     if (contentRef.current) {
@@ -189,14 +203,57 @@ export function TextoEditor({ page, onUpdate, readOnly = false }: { page: TextoP
           readOnly={readOnly}
         />
       )}
-      <div
-        ref={contentRef}
-        contentEditable={!readOnly}
-        onBlur={handleBlur}
-        onInput={handleInput}
-        className={`abnt-editor w-full flex-1 text-justify bg-transparent outline-none focus:ring-2 focus:ring-cyan-500/50 focus:bg-cyan-500/5 transition-all overflow-auto whitespace-pre-wrap ${page.content === '' ? 'empty:before:content-[attr(data-placeholder)] empty:before:text-gray-300' : ''}`}
-        data-placeholder="Digite o conteúdo do relatório aqui..."
-      />
+      {isSumario ? (
+        <div className="w-full flex-1 overflow-y-auto">
+          <SumarioEditorView
+            content={page.content || ''}
+            onUpdateContent={(newContent) => onUpdate({ content: newContent })}
+            onSyncPages={onSyncSumario}
+            readOnly={readOnly}
+          />
+        </div>
+      ) : (
+        <>
+          <div
+            ref={contentRef}
+            contentEditable={!readOnly}
+            onBlur={handleBlur}
+            onInput={handleInput}
+            className={`abnt-editor w-full flex-1 text-justify bg-transparent outline-none focus:ring-2 focus:ring-cyan-500/50 focus:bg-cyan-500/5 transition-all overflow-auto whitespace-pre-wrap ${page.content === '' ? 'empty:before:content-[attr(data-placeholder)] empty:before:text-gray-300' : ''}`}
+            data-placeholder="Digite o conteúdo do relatório aqui..."
+          />
+          {!readOnly && (
+            <div className="flex-none pt-1.5 pb-0.5 flex items-center justify-between text-[11px] text-zinc-500 select-none print:hidden border-t border-zinc-200/80 mt-1">
+              <div className="flex items-center space-x-1.5">
+                <span className="font-medium text-zinc-500">Capacidade da Folha:</span>
+                {(() => {
+                  const cap = analyzePageCapacity(page);
+                  return (
+                    <span className={cap.linesRemaining <= 3 ? "text-amber-600 font-semibold" : "text-emerald-700 font-medium"}>
+                      {cap.linesUsed} / {cap.maxLines} linhas ({cap.linesRemaining} livres)
+                    </span>
+                  );
+                })()}
+              </div>
+              {(() => {
+                const cap = analyzePageCapacity(page);
+                if (cap.linesRemaining <= 0) {
+                  return (
+                    <span className="text-amber-700 text-[10px] font-semibold bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                      Folha cheia — crie uma nova folha
+                    </span>
+                  );
+                }
+                return (
+                  <span className="text-zinc-400 text-[10px]">
+                    Norma ABNT (12pt, 1.5 linhas)
+                  </span>
+                );
+              })()}
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }

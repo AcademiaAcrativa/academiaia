@@ -7,6 +7,7 @@ import { PrintView } from './components/PrintView';
 import { Home } from './components/Home';
 import { DocumentState, Page, PageType } from './types';
 import { syncSumarioPages } from './utils/sumario';
+import { calculateTextLines } from './utils/pageCapacity';
 
 import { Layers, FilePlus, Download } from 'lucide-react';
 import { jsPDF } from 'jspdf';
@@ -146,11 +147,15 @@ export default function App() {
 
             if (!blockFullText) return;
 
-            const wouldExceed = currentContent.length > 0 && (currentContent.length + blockFullText.length > 1100);
+            const headingLines = isFirstPage ? 2 : (currentHeading ? 2 : 0);
+            const currentLines = calculateTextLines(currentContent);
+            const blockLines = calculateTextLines(blockFullText) + (currentContent.length > 0 ? 1 : 0);
+            // In ABNT 12pt with 1.5 line-height, a standard page accommodates ~36-38 lines
+            const wouldExceed = currentContent.length > 0 && (headingLines + currentLines + blockLines > 36);
 
             if (wouldExceed) {
               devPages.push({
-                id: generateId(),
+                id: isFirstPage ? devId : generateId(),
                 type: 'texto',
                 name: currentPageName,
                 heading: isFirstPage ? mainHeading : currentHeading,
@@ -295,7 +300,7 @@ export default function App() {
         type: 'texto',
         name: 'Sumário',
         heading: 'SUMÁRIO',
-        content: '1 INTRODUÇÃO ............................................................................................ 6\n2 DESENVOLVIMENTO ................................................................................... 7\n  2.1 O que é o robô? .............................................................................. 7\n  2.2 Objetivo do projeto .......................................................................... 7\n  2.3 Vantagens e desvantagens .......................................................... 8\n    2.3.1 Vantagens ................................................................................... 8\n    2.3.2 Desvantagens ............................................................................... 8\n  2.4 Construção técnica ....................................................................... 8\n    2.4.1 Circuito principal .................................................................          8\n  2.5 Funcionamento do projeto .......................................................... 14\n  2.6 Produtos similares existentes no mercado ................................... 14\n  2.7 Custo do projeto ......................................................................... 15\n3 CONCLUSÃO .............................................................................................. 16\n4 ANEXOS .................................................................................................         19\n5 PLANO DE ORÇAMENTOS .................................................................. 17\n6 TABELA DE PRAZOS .................................................................          18\n7 REFERÊNCIAS .................................................................................   20',
+        content: '1 INTRODUÇÃO ............................................................................................ 6\n2 DESENVOLVIMENTO ................................................................................... 7\n  2.1 O que é o robô? .............................................................................. 7\n  2.2 Objetivo do projeto .......................................................................... 7\n  2.3 Vantagens e desvantagens .......................................................... 8\n    2.3.1 Vantagens ................................................................................... 8\n    2.3.2 Desvantagens ............................................................................... 8\n  2.4 Construção técnica ....................................................................... 8\n    2.4.1 Circuito principal ................................................................. 8\n  2.5 Funcionamento do projeto .......................................................... 14\n  2.6 Produtos similares existentes no mercado ................................... 14\n  2.7 Custo do projeto ......................................................................... 15\n3 CONCLUSÃO .............................................................................................. 16\n4 ANEXOS ................................................................................................. 19\n5 PLANO DE ORÇAMENTOS .................................................................. 17\n6 TABELA DE PRAZOS ................................................................. 18\n7 REFERÊNCIAS ................................................................................. 20',
       },
       {
         id: introId,
@@ -375,7 +380,27 @@ export default function App() {
       newPage = { id, type: 'texto', name: displayName, heading, content: '' };
     }
     setDocState((prev) => {
-      const updatedPages = [...prev.pages, newPage];
+      let insertIdx = prev.pages.length;
+      if (displayName.toLowerCase().includes('desenvolvimento') || displayName.startsWith('2')) {
+        const lastDevIdx = prev.pages.map(p => 
+          p.name.toLowerCase().includes('desenvolvimento') || 
+          (p.type === 'texto' && p.heading?.startsWith('2')) ||
+          p.name.startsWith('2')
+        ).lastIndexOf(true);
+
+        if (lastDevIdx !== -1) {
+          insertIdx = lastDevIdx + 1;
+        } else {
+          const introIdx = prev.pages.findIndex(p => 
+            p.name.toLowerCase().includes('introdução') || 
+            (p.type === 'texto' && p.heading?.startsWith('1'))
+          );
+          if (introIdx !== -1) insertIdx = introIdx + 1;
+        }
+      }
+
+      const updatedPages = [...prev.pages];
+      updatedPages.splice(insertIdx, 0, newPage);
       return {
         ...prev,
         pages: syncSumarioPages(updatedPages),
@@ -464,6 +489,13 @@ export default function App() {
     window.print();
   };
 
+  const handleSyncSumario = () => {
+    setDocState((prev) => ({
+      ...prev,
+      pages: syncSumarioPages(prev.pages, { force: true }),
+    }));
+  };
+
   return (
     <div className="flex flex-col h-screen bg-[#262626] text-zinc-300 font-sans overflow-hidden">
       {isGeneratingPDF && (
@@ -484,7 +516,7 @@ export default function App() {
           <Toolbar onAddPage={() => addPage('Nova Página', 'texto')} onExportPDF={handleExportPDF} />
           
           <div className="flex-1 flex flex-col h-full overflow-hidden relative">
-            <Canvas docState={docState} onUpdatePage={updatePage} />
+            <Canvas docState={docState} onUpdatePage={updatePage} onSyncSumario={handleSyncSumario} />
 
             {/* Mobile Bottom Control Bar */}
             <div className="md:hidden bg-[#2a2a2a] border-t border-[#1e1e1e] px-3 py-2 flex items-center justify-between z-20 shrink-0">

@@ -7,6 +7,7 @@ import { isPreTextualPage } from '../utils/sumario';
 interface Props {
   docState: DocumentState;
   onUpdatePage: (id: string, updates: Partial<Page>) => void;
+  onSyncSumario?: () => void;
 }
 
 interface DraggableImageProps {
@@ -130,7 +131,7 @@ function DraggableImage({
   );
 }
 
-export function Canvas({ docState, onUpdatePage }: Props) {
+export function Canvas({ docState, onUpdatePage, onSyncSumario }: Props) {
   const activePageIdx = docState.pages.findIndex(p => p.id === docState.activePageId);
   const activePage = activePageIdx !== -1 ? docState.pages[activePageIdx] : docState.pages[0];
   const containerRef = useRef<HTMLDivElement>(null);
@@ -286,7 +287,11 @@ export function Canvas({ docState, onUpdatePage }: Props) {
               <RostoEditor page={activePage} onUpdate={(updates) => onUpdatePage(activePage.id, updates)} />
             )}
             {activePage.type === 'texto' && (
-              <TextoEditor page={activePage} onUpdate={(updates) => onUpdatePage(activePage.id, updates)} />
+              <TextoEditor 
+                page={activePage} 
+                onUpdate={(updates) => onUpdatePage(activePage.id, updates)} 
+                onSyncSumario={onSyncSumario}
+              />
             )}
           </div>
 

@@ -1,5 +1,6 @@
 import { DocumentState, CapaPage, RostoPage, TextoPage } from '../types';
-import { isPreTextualPage } from '../utils/sumario';
+import { isPreTextualPage, isSumarioPage } from '../utils/sumario';
+import { SumarioPrintView } from './SumarioRenderer';
 
 function CapaPrint({ page }: { page: CapaPage }) {
   return (
@@ -121,9 +122,15 @@ function TextoPrint({ page }: { page: TextoPage }) {
         </div>
       )}
 
-      <div className="abnt-editor w-full flex-1 text-justify overflow-hidden whitespace-pre-wrap text-black">
-        {page.content || ''}
-      </div>
+      {isSumarioPage(page) ? (
+        <div className="w-full flex-1 overflow-hidden">
+          <SumarioPrintView content={page.content || ''} />
+        </div>
+      ) : (
+        <div className="abnt-editor w-full flex-1 text-justify overflow-hidden whitespace-pre-wrap text-black">
+          {page.content || ''}
+        </div>
+      )}
     </div>
   );
 }
