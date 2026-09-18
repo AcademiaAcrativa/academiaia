@@ -1,6 +1,7 @@
-import { DocumentState, CapaPage, RostoPage, TextoPage } from '../types';
+import { DocumentState, CapaPage, RostoPage, TextoPage, TabelaPage } from '../types';
 import { isPreTextualPage, isSumarioPage } from '../utils/sumario';
 import { SumarioPrintView } from './SumarioRenderer';
+import { TabelaPrintView } from './TabelaOrcamento';
 import { ETERJ_LOGO_BASE64 } from '../assets/eterjLogo';
 
 function CapaPrint({ page }: { page: CapaPage }) {
@@ -186,6 +187,7 @@ export function PrintView({ docState }: { docState: DocumentState }) {
               {page.type === 'capa' && <CapaPrint page={page} />}
               {page.type === 'rosto' && <RostoPrint page={page} />}
               {page.type === 'texto' && <TextoPrint page={page} />}
+              {page.type === 'tabela' && <TabelaPrintView page={page} />}
             </div>
 
             {/* Render Draggable Images Layer for Print */}

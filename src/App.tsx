@@ -9,6 +9,7 @@ import { DocumentState, Page, PageType } from './types';
 import { syncSumarioPages } from './utils/sumario';
 import { calculateTextLines } from './utils/pageCapacity';
 import { SAMPLE_ROBOT_IMAGE, SAMPLE_CIRCUIT_IMAGE } from './assets/sampleImages';
+import { DEFAULT_BUDGET_ITEMS } from './utils/budgetUtils';
 
 import { Layers, FilePlus, Download } from 'lucide-react';
 import { generateDirectPDF } from './utils/pdfExport';
@@ -109,6 +110,7 @@ export default function App() {
     const conclId = generateId();
     const refId = generateId();
     const anexoId = generateId();
+    const orcamentoId = generateId();
 
     const devPages: Page[] = [];
     const hasCustomDev = (data?.desenvolvimentos && data.desenvolvimentos.some(b => b.content.trim() || b.title.trim())) || data?.desenvolvimento;
@@ -316,18 +318,25 @@ export default function App() {
         content: data?.conclusao || 'O desenvolvimento do robô de combate a incêndios demonstrou a viabilidade e a eficácia da utilização de sistemas embarcados baseados em Arduino na automação de processos de segurança. O protótipo cumpriu os objetivos propostos de detecção rápida de focos de incêndio e acionamento autônomo da bomba d\'água, minimizando riscos humanos em situações críticas.',
       },
       {
+        id: anexoId,
+        type: 'texto',
+        name: 'Anexos',
+        heading: '4 ANEXOS',
+        content: data?.anexos || 'ANEXO A — Diagrama esquemático detalhado e tabela de custos dos componentes do robô de combate a incêndios.',
+      },
+      {
+        id: orcamentoId,
+        type: 'tabela',
+        name: 'Plano de Orçamentos',
+        heading: '5 PLANO DE ORÇAMENTOS',
+        items: DEFAULT_BUDGET_ITEMS,
+      },
+      {
         id: refId,
         type: 'texto',
         name: 'Referências',
         heading: 'REFERÊNCIAS',
         content: data?.referencias || 'ASSOCIAÇÃO BRASILEIRA DE NORMAS TÉCNICAS. NBR 14724: Informação e documentação — Trabalhos acadêmicos — Apresentação. Rio de Janeiro: ABNT, 2011.\n\nNATIONAL CRIME RECORDS BUREAU (NCRB). Accident deaths and suicides in India. New Delhi: Ministry of Home Affairs, 2014.\n\nSLATER, J. Programming Arduino with Interactive Sensors. New York: Tech Books, 2018.',
-      },
-      {
-        id: anexoId,
-        type: 'texto',
-        name: 'Anexos',
-        heading: 'ANEXOS',
-        content: data?.anexos || 'ANEXO A — Diagrama esquemático detalhado e tabela de custos dos componentes do robô de combate a incêndios.',
       },
     ];
 
@@ -357,6 +366,18 @@ export default function App() {
       newPage = { id, type: 'capa', name: displayName, institution: '', author: '', title: '', subtitle: '', city: '', year: '' };
     } else if (type === 'rosto') {
       newPage = { id, type: 'rosto', name: displayName, author: '', title: '', subtitle: '', note: 'Relatório final apresentado à Escola Técnica do Rio de Janeiro como parte dos requisitos acadêmicos.', city: '', year: '' };
+    } else if (type === 'tabela' || displayName.toLowerCase().includes('orçamento') || displayName.toLowerCase().includes('orcamento') || displayName.toLowerCase().includes('tabela')) {
+      let heading = displayName.toUpperCase();
+      if (!/^\d/.test(heading)) {
+        heading = `5 ${heading}`;
+      }
+      newPage = {
+        id,
+        type: 'tabela',
+        name: displayName,
+        heading,
+        items: DEFAULT_BUDGET_ITEMS,
+      };
     } else {
       let heading = displayName.toUpperCase();
       if (displayName === 'Desenvolvimento' || displayName === 'Desenvolvimento Principal') {

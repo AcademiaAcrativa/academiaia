@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { DragEvent, Dispatch, SetStateAction, ChangeEvent } from 'react';
 import { DocumentState, PageType, Page, TextoPage } from '../types';
-import { Layers, Type, FilePlus2, Trash2, Image as ImageIcon, Edit2, Check, RefreshCw, BookOpen, Plus, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Layers, Type, FilePlus2, Trash2, Image as ImageIcon, Edit2, Check, RefreshCw, BookOpen, Plus, AlertCircle, CheckCircle2, Calculator } from 'lucide-react';
 import { syncSumarioPages } from '../utils/sumario';
 import { analyzePageCapacity, willSubDevelopmentFit, getNextDevelopmentNumber } from '../utils/pageCapacity';
 
@@ -23,7 +23,7 @@ const ABNT_SECTIONS = [
       'Lista de símbolos', 'Sumário'
   ]},
   { group: 'Elementos Textuais', items: [
-      'Introdução', 'Desenvolvimento Principal', 'Conclusão'
+      'Introdução', 'Desenvolvimento Principal', 'Conclusão', 'Plano de Orçamentos'
   ]},
   { group: 'Elementos Pós-textuais', items: [
       'Referências', 'Glossário', 'Apêndice(s)', 'Anexo(s)'
@@ -333,7 +333,8 @@ export function RightPanel({ docState, setDocState, onAddPage, onUpdatePage, cla
                     if (!val) return;
                     const isCapa = val === 'Capa';
                     const isRosto = val === 'Folha de rosto';
-                    onAddPage(val, isCapa ? 'capa' : isRosto ? 'rosto' : 'texto');
+                    const isTabela = val.toLowerCase().includes('orçamento') || val.toLowerCase().includes('orcamento') || val.toLowerCase().includes('tabela');
+                    onAddPage(val, isCapa ? 'capa' : isRosto ? 'rosto' : isTabela ? 'tabela' : 'texto');
                   }}
                 >
                   <option value="" disabled>Selecione para adicionar...</option>
@@ -519,6 +520,19 @@ export function RightPanel({ docState, setDocState, onAddPage, onUpdatePage, cla
               />
             </label>
           </div>
+        </div>
+
+        {/* Botão dedicado para Plano de Orçamentos com cálculo automático */}
+        <div className="px-3 pb-3">
+          <button
+            type="button"
+            onClick={() => onAddPage('Plano de Orçamentos', 'tabela')}
+            className="w-full py-2 px-3 bg-gradient-to-r from-blue-900/60 to-cyan-900/60 hover:from-blue-800/80 hover:to-cyan-800/80 border border-cyan-500/40 rounded text-xs font-semibold text-cyan-200 hover:text-white flex items-center justify-center space-x-2 transition-all shadow-sm cursor-pointer"
+            title="Criar folha com tabela de plano de orçamento com cálculos automáticos"
+          >
+            <Calculator size={14} className="text-cyan-400" />
+            <span>+ Plano de Orçamentos (Tabela)</span>
+          </button>
         </div>
       </div>
 

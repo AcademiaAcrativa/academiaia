@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { DocumentState, Page, DocumentImage } from '../types';
 import { CapaEditor, RostoEditor, TextoEditor } from './PageTemplates';
+import { TabelaEditor } from './TabelaOrcamento';
 import { ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 import { isPreTextualPage } from '../utils/sumario';
 
@@ -297,6 +298,12 @@ export function Canvas({ docState, onUpdatePage, onSyncSumario }: Props) {
                 page={activePage} 
                 onUpdate={(updates) => onUpdatePage(activePage.id, updates)} 
                 onSyncSumario={onSyncSumario}
+              />
+            )}
+            {activePage.type === 'tabela' && (
+              <TabelaEditor 
+                page={activePage} 
+                onUpdate={(updates) => onUpdatePage(activePage.id, updates)} 
               />
             )}
           </div>

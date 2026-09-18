@@ -1,4 +1,4 @@
-export type PageType = 'capa' | 'rosto' | 'texto';
+export type PageType = 'capa' | 'rosto' | 'texto' | 'tabela';
 export type FontFamily = 'Arial' | 'Times New Roman';
 
 export interface DocumentImage {
@@ -8,6 +8,13 @@ export interface DocumentImage {
   y: number;
   width: number;
   height: number;
+}
+
+export interface BudgetItem {
+  id: string;
+  material: string;
+  unitPrice: string | number;
+  quantity: string | number;
 }
 
 export interface BasePage {
@@ -43,7 +50,14 @@ export interface TextoPage extends BasePage {
   content: string;
 }
 
-export type Page = CapaPage | RostoPage | TextoPage;
+export interface TabelaPage extends BasePage {
+  type: 'tabela';
+  heading: string;
+  items: BudgetItem[];
+  notes?: string;
+}
+
+export type Page = CapaPage | RostoPage | TextoPage | TabelaPage;
 
 export interface DocumentState {
   fontFamily: FontFamily;

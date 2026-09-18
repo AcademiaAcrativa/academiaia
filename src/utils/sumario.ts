@@ -115,7 +115,7 @@ export function generateSumarioEntries(pages: Page[]): SumarioItem[] {
     if (!isPreTextual) {
       // Determine title to display in Sumário
       let mainTitle = '';
-      if (page.type === 'texto' && page.heading) {
+      if ((page.type === 'texto' || page.type === 'tabela') && page.heading) {
         mainTitle = page.heading.trim();
       } else {
         mainTitle = page.name.trim().toUpperCase();
